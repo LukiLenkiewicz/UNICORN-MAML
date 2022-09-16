@@ -130,6 +130,9 @@ def prepare_model(args):
     elif args.model_class == 'MAMLUnicorn':
         from model.models.MAMLUnicorn import MAML 
         model = MAML(args)
+    elif args.model_class == "HyperMAML":
+        from model.models.hypermaml import HyperMAML
+        model = HyperMAML(args)
     else:
         raise ValueError('No Such Model')
     

@@ -148,11 +148,11 @@ def get_command_line_parser():
     parser.add_argument('--query', type=int, default=15)
     parser.add_argument('--eval_query', type=int, default=15)
     parser.add_argument('--backbone_class', type=str, default='Res12',
-                        choices=['Res12'])
+                        choices=['Res12', ""])
     parser.add_argument('--dataset', type=str, default='MiniImageNet', 
                         choices=['MiniImageNet', 'TieredImageNet', 'CUB'])
     parser.add_argument('--model_class', type=str, default='MAML', 
-                        choices=['MAML', 'MAMLUnicorn']) 
+                        choices=['MAML', 'MAMLUnicorn', "HyperMAML"])
  
     # optimization parameters
     parser.add_argument('--lr', type=float, default=0.001)

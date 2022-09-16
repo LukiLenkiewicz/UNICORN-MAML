@@ -19,7 +19,7 @@ class ConvNet(nn.Module):
         self.add_module('{0}_{1}'.format(3,0), nn.Conv2d(hid_dim, z_dim, 3, padding=1))   
         self.add_module('{0}_{1}'.format(3,1), nn.BatchNorm2d(z_dim))             
     
-    def forward(self, x, params = None, embedding = False):
+    def forward(self, x, params = None, embedding = False, embedding_and_logits: bool = False):
         if params is None:
             params = OrderedDict(self.named_parameters())
             
@@ -35,9 +35,12 @@ class ConvNet(nn.Module):
         output = F.avg_pool2d(output, 5)     # AveragePool Here
         output = output.view(x.size(0), -1)
         
+        logits = F.linear(output, weight=params['fc.weight'], bias=params['fc.bias'])
         if embedding:
             return output
+        elif embedding_and_logits:
+            return output, logits
         else:
             # Apply Linear Layer
-            logits = F.linear(output, weight=params['fc.weight'], bias=params['fc.bias'])
             return logits
+

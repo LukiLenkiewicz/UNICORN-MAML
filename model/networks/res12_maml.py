@@ -212,7 +212,7 @@ class ResNetMAML(nn.Module):
 
         return nn.Sequential(*layers)
     
-    def forward(self, x, params = None, embedding = False):
+    def forward(self, x, params = None, embedding = False, embedding_and_logits: bool = False):
         if params is None:
             params = OrderedDict(self.named_parameters())
             
@@ -225,10 +225,11 @@ class ResNetMAML(nn.Module):
             x = self.avgpool(x)
             
         x = x.view(x.size(0), -1)
-        
+        logits = F.linear(x, weight=params['fc.weight'], bias=params['fc.bias'])
         if embedding:
             return x
+        elif embedding_and_logits:
+            return x, logits
         else:
             # Apply Linear Layer
-            logits = F.linear(x, weight=params['fc.weight'], bias=params['fc.bias'])
             return logits

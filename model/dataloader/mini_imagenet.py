@@ -8,13 +8,16 @@ import numpy as np
 import jpeg4py as jpeg
 
 THIS_PATH = osp.dirname(__file__)
-ROOT_PATH = osp.abspath(osp.join(THIS_PATH, '..', '..'))
-ROOT_PATH2 = osp.abspath(osp.join(THIS_PATH, '..', '..', '..'))
+ROOT_PATH = osp.abspath(osp.join(THIS_PATH, '..', ".." ))
+ROOT_PATH2 = osp.abspath(osp.join(THIS_PATH, '..', '..',))
 IMAGE_PATH1 = osp.join(ROOT_PATH2, 'data/miniimagenet/images')
 IMAGE_PATH2 = osp.join(ROOT_PATH2, 'data/miniimagenetaux/images')
 SPLIT_PATH = osp.join(ROOT_PATH, 'data/miniimagenet/split')
 CACHE_PATH = osp.join(ROOT_PATH, '.cache/')
 split_map = {'train':IMAGE_PATH1, 'val':IMAGE_PATH1, 'test':IMAGE_PATH1, 'aux_val':IMAGE_PATH2, 'aux_test':IMAGE_PATH2}
+
+print(SPLIT_PATH, split_map)
+
 
 def identity(x):
     return x
@@ -95,8 +98,8 @@ class MiniImageNet(Dataset):
 
     def __getitem__(self, i):
         data, label = self.data[i], self.label[i]
-        try:
-            image = self.transform(Image.fromarray(jpeg.JPEG(data).decode()).convert('RGB'))
-        except:
-            image = self.transform(Image.open(data).convert('RGB'))
+        #try:
+        #    image = self.transform(Image.fromarray(jpeg.JPEG(data).decode()).convert('RGB'))
+        #except:
+        image = self.transform(Image.open(data).convert('RGB'))
         return image, label
