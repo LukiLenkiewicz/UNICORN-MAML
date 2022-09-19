@@ -49,16 +49,21 @@ def inner_train_step(model, support_data, hn, args):
 class HN(nn.Module):
     def __init__(self, args, hdim: int):
         super().__init__()
-        self.head_len = 3
-        self.hidden_size = 256
+        self.head_len = args.hm_hn_len
+        self.hidden_size = args.hm_hn_width
 
-        layers = [
-            nn.Linear(hdim + 2 * args.way, self.hidden_size),
-            nn.ReLU()
-        ]
-        for i in range(self.head_len - 1):
-            layers.extend([nn.Linear(self.hidden_size, self.hidden_size), nn.ReLU()])
-        layers.append(nn.Linear(self.hidden_size, hdim + 1))
+        self.embedding_size = hdim + 2 * args.way
+        if self.head_len == 1:
+            layers = [nn.Linear(self.embedding_size, hdim + 1)]
+
+        else:
+            layers = [
+                nn.Linear(self.embedding_size, self.hidden_size),
+                nn.ReLU()
+            ]
+            for i in range(self.head_len - 2):
+                layers.extend([nn.Linear(self.hidden_size, self.hidden_size), nn.ReLU()])
+            layers.append(nn.Linear(self.hidden_size, hdim + 1))
 
         self.hn = nn.Sequential(*layers)
 

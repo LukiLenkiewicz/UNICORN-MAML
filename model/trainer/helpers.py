@@ -182,7 +182,7 @@ def prepare_optimizer(model, args):
         params = [{'params': model.encoder.parameters()},
                  {'params': top_para, 'lr': args.lr * args.lr_mul}]
 
-        if args.um_freeze_backbone:
+        if args.hm_freeze_backbone:
             from model.models.hypermaml import HyperMAML
 
             assert isinstance(model, HyperMAML)

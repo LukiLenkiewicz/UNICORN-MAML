@@ -188,7 +188,11 @@ def get_command_line_parser():
     parser.add_argument('--eval_interval', type=int, default=5)
     parser.add_argument('--save_dir', type=str, default='./checkpoints')
     parser.add_argument('--suffix', type=str, default="")
-    parser.add_argument("--um_freeze_backbone", action="store_true", default=False)
     parser.add_argument("--optimizer_class", type=str, default="sgd", choices=["sgd", "adam"])
+
+    parser.add_argument("--hm_freeze_backbone", action="store_true", default=False)
+    parser.add_argument("--hm_hn_len", type=int, default=3)
+    parser.add_argument("--hm_hn_width", type=int, default=256)
+
 
     return parser
