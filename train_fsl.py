@@ -23,7 +23,9 @@ if __name__ == '__main__':
     # trainer.evaluate_test()
     # trainer.final_record()
     trainer.evaluate_test_cross_shot()
+    trainer.final_record()
     print(args.save_path)
+
 
 
 
