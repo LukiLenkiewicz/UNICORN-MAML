@@ -15,19 +15,31 @@ def inner_train_step(model, support_data, hn, args):
     onehot = torch.zeros(len(support_data), args.way)
     onehot[torch.arange(len(support_data)), label] = 1
 
+
     params = OrderedDict(model.named_parameters())
 
     embeddings, logits = model(support_data, params, embedding_and_logits=True)
 
     enhanced_embeddings = torch.cat([embeddings, logits, onehot.cuda()], dim=1)
 
-    hn_out = hn(enhanced_embeddings)
+    avg_enhanced_embeddings = []
+
+    for l in set(label.cpu().numpy()):
+        avg_enhanced_embeddings.append(
+            enhanced_embeddings[label==l].mean(dim=0)
+        )
+
+    avg_enhanced_embeddings = torch.stack(avg_enhanced_embeddings)
+
+
+    hn_out = hn(avg_enhanced_embeddings)
 
     weigths_update = hn_out[:, :-1]
     bias_update = hn_out[:, -1]
 
     assert params["fc.weight"].shape == weigths_update.shape
     assert params["fc.bias"].shape == bias_update.shape
+
 
     params["fc.weight"] = params["fc.weight"] + weigths_update
     params["fc.bias"] = params["fc.bias"] + bias_update
@@ -58,13 +70,13 @@ class HyperMAML(nn.Module):
 
     def __init__(self, args):
         super().__init__()
-        assert args.shot == 1
+
         if args.backbone_class == 'Res12':
             hdim = 640
             from model.networks.res12_maml import ResNetMAML
             self.encoder = ResNetMAML(dropblock_size=args.dropblock_size)
         elif args.backbone_class == "Conv4":
-            hdim = 640
+            hdim = 64
             from model.networks.convnet_maml import ConvNet
             self.encoder = ConvNet()
         else:

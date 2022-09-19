@@ -233,7 +233,7 @@ class FSLTrainer(Trainer):
         for e in self.running_dict:
             self.running_dict[e]['mean_copy'] = deepcopy(self.running_dict[e]['mean'])
             self.running_dict[e]['var_copy'] = deepcopy(self.running_dict[e]['var'])        
-        record = np.zeros((10000, 2)) # loss and acc
+        record = np.zeros((args.num_test_episodes, 2)) # loss and acc
         label = torch.arange(args.eval_way, dtype=torch.int16).repeat(args.eval_query)
         label = label.type(torch.LongTensor)
         if torch.cuda.is_available():
@@ -262,7 +262,7 @@ class FSLTrainer(Trainer):
             del data, support, query, logits, loss
             torch.cuda.empty_cache()
             
-        assert(i == record.shape[0])
+        assert(i == record.shape[0]), (i, record.shape)
         vl, _ = compute_confidence_interval(record[:,0])
         va, vap = compute_confidence_interval(record[:,1])
     
@@ -293,7 +293,7 @@ class FSLTrainer(Trainer):
             self.running_dict[e]['var_copy'] = deepcopy(self.running_dict[e]['var'])        
         # num_shots = [1, 5, 10, 20, 30, 50]
         num_shots = [1, 5]
-        record = np.zeros((10000, len(num_shots))) # loss and acc
+        record = np.zeros((args.num_test_episodes, len(num_shots))) # loss and acc
         label = torch.arange(args.eval_way, dtype=torch.int16).repeat(args.eval_query)
         label = label.type(torch.LongTensor)
         if torch.cuda.is_available():
@@ -325,9 +325,9 @@ class FSLTrainer(Trainer):
                 record[i-1, s_index] = acc
                 del data, support, query, logits, loss
                 torch.cuda.empty_cache()
-                
-            assert(i == record.shape[0])
-            
+
+            assert (i == record.shape[0]), (i, record.shape)
+
             va, vap = compute_confidence_interval(record[:,s_index])
             print('Shot {} Test acc={:.4f} + {:.4f}\n'.format(shot, va, vap))
             args.way, args.shot, args.query = args.old_way, args.old_shot, args.old_query

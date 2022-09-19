@@ -36,7 +36,11 @@ class MAML(nn.Module):
         if args.backbone_class == 'Res12':
             hdim = 640
             from model.networks.res12_maml import ResNetMAML
-            self.encoder = ResNetMAML(dropblock_size=args.dropblock_size) 
+            self.encoder = ResNetMAML(dropblock_size=args.dropblock_size)
+        elif args.backbone_class == "Conv4":
+            hdim = 64
+            from model.networks.convnet_maml import ConvNet
+            self.encoder = ConvNet()
         else:
             raise ValueError('')
 

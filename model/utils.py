@@ -30,12 +30,12 @@ def set_gpu(x):
     print('using gpu:', x)
 
 def ensure_path(dir_path, scripts_to_save=None):
-    # if os.path.exists(dir_path):
-    #     if input('{} exists, remove? ([y]/n)'.format(dir_path)) != 'n':
-    #         shutil.rmtree(dir_path)
-    #         os.mkdir(dir_path)
-    # else:
-    #     os.mkdir(dir_path)
+    if os.path.exists(dir_path):
+        if input('{} exists, remove? ([y]/n)'.format(dir_path)) != 'n':
+            shutil.rmtree(dir_path)
+            os.mkdir(dir_path)
+    else:
+        os.mkdir(dir_path)
 
     print('Experiment dir : {}'.format(dir_path))
     if scripts_to_save is not None:
@@ -113,6 +113,7 @@ def postprocess_args(args):
     save_path1 = '-'.join([args.dataset, args.model_class, args.backbone_class, '{:02d}w{:02d}s{:02}q'.format(args.way, args.shot, args.query)])
     save_path2 = '_'.join([str('_'.join(args.step_size.split(','))), str(args.gamma),
                            'lr{:.2g}'.format(args.lr),
+                           args.optimizer_class,
                            'InLR{}InIter{}'.format(args.gd_lr, args.inner_iters),
                            str(args.lr_scheduler), 
                            't{}'.format(args.temperature), 
@@ -127,6 +128,9 @@ def postprocess_args(args):
         save_path2 += '-FBN'
     if args.model_class == 'MAMLNoise':
         save_path2 += '-{}R{}'.format(args.noise_type, args.noise_ratio)
+
+    if args.suffix != "":
+        save_path2 += f"_{args.suffix}"
             
     if not os.path.exists(args.save_dir):
         os.mkdir(args.save_dir)    
@@ -134,6 +138,7 @@ def postprocess_args(args):
     if not os.path.exists(os.path.join(args.save_dir, save_path1)):
         os.mkdir(os.path.join(args.save_dir, save_path1))
     args.save_path = os.path.join(args.save_dir, save_path1, save_path2)
+
     return args
 
 def get_command_line_parser():
@@ -141,6 +146,7 @@ def get_command_line_parser():
     parser.add_argument('--max_epoch', type=int, default=200)
     parser.add_argument('--episodes_per_epoch', type=int, default=100)
     parser.add_argument('--num_eval_episodes', type=int, default=500)
+    parser.add_argument('--num_test_episodes', type=int, default=10000)
     parser.add_argument('--way', type=int, default=5)
     parser.add_argument('--eval_way', type=int, default=5)
     parser.add_argument('--shot', type=int, default=3)
@@ -148,7 +154,7 @@ def get_command_line_parser():
     parser.add_argument('--query', type=int, default=15)
     parser.add_argument('--eval_query', type=int, default=15)
     parser.add_argument('--backbone_class', type=str, default='Res12',
-                        choices=['Res12', ""])
+                        choices=['Res12', "Conv4"])
     parser.add_argument('--dataset', type=str, default='MiniImageNet', 
                         choices=['MiniImageNet', 'TieredImageNet', 'CUB'])
     parser.add_argument('--model_class', type=str, default='MAML', 
@@ -181,5 +187,8 @@ def get_command_line_parser():
     parser.add_argument('--log_interval', type=int, default=50)
     parser.add_argument('--eval_interval', type=int, default=5)
     parser.add_argument('--save_dir', type=str, default='./checkpoints')
-    
+    parser.add_argument('--suffix', type=str, default="")
+    parser.add_argument("--um_freeze_backbone", action="store_true", default=False)
+    parser.add_argument("--optimizer_class", type=str, default="sgd", choices=["sgd", "adam"])
+
     return parser

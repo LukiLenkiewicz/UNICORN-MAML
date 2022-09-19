@@ -6,6 +6,8 @@ from torch.utils.data import DataLoader
 from model.dataloader.samplers import CategoriesSampler, ClassSampler
 from collections import Counter
 
+
+
 def get_dataloader(args):
     if args.dataset == 'MiniImageNet':
         # Handle MiniImageNet
@@ -51,7 +53,7 @@ def get_dataloader(args):
     
     testset = Dataset('test', args)
     test_sampler = CategoriesSampler(testset.label,
-                                     10000, args.eval_way,
+                                     args.num_test_episodes, args.eval_way,
                                      args.eval_shot + args.eval_query)
     test_loader = DataLoader(dataset=testset,
                             batch_sampler=test_sampler,
@@ -82,7 +84,8 @@ def get_cross_shot_dataloader(args, shot):
     
     testset = Dataset('test', args)
     test_sampler = CategoriesSampler(testset.label,
-                                     10000, args.eval_way,
+                                     args.num_test_episodes,
+                                     args.eval_way,
                                      shot + args.eval_query)    
     test_loader = DataLoader(dataset=testset,
                             batch_sampler=test_sampler,
@@ -140,8 +143,21 @@ def prepare_model(args):
     if args.para_init is not None:
         model_dict = model.state_dict()        
         pretrained_dict = torch.load(args.para_init, map_location='cpu')['params'] # map_location=torch.device('cpu')
+
+        if args.backbone_class == "Conv4":
+            pd2 = dict()
+            for k, v in pretrained_dict.items():
+                if k.startswith("encoder"):
+                    p1, p2, p3, p4 = k.split(".")
+                    new_k = f"{p1}.{p2}_{p3}.{p4}"
+                    pd2[new_k] = v
+                else:
+                    pd2[k] = v
+
+            pretrained_dict = pd2
+
         pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
-        print(pretrained_dict.keys())
+
         model_dict.update(pretrained_dict)
         model.load_state_dict(model_dict)
 
@@ -158,24 +174,40 @@ def prepare_model(args):
     return model
 
 def prepare_optimizer(model, args):
+
+    # select parameters
     if args.lr_mul > 1:
-        top_para = [v for k,v in model.named_parameters() if 'encoder' not in k]        
-        optimizer = optim.SGD(
-                        [{'params': model.encoder.parameters()},
-                         {'params': top_para, 'lr': args.lr * args.lr_mul}],
-                        lr=args.lr,
-                        momentum=args.mom,
-                        nesterov=True,
-                        weight_decay=args.weight_decay
-                    )        
+        top_para = [v for k,v in model.named_parameters() if 'encoder' not in k]
+
+        params = [{'params': model.encoder.parameters()},
+                 {'params': top_para, 'lr': args.lr * args.lr_mul}]
+
+        if args.um_freeze_backbone:
+            from model.models.hypermaml import HyperMAML
+
+            assert isinstance(model, HyperMAML)
+            params = model.hn.parameters()
+
+
+
     else:
-        optimizer = optim.SGD(
-                        model.parameters(),
-                        lr=args.lr,
-                        momentum=args.mom,
-                        nesterov=True,
-                        weight_decay=args.weight_decay
-                    )
+        params =model.parameters()
+
+    # select optimizer
+    if args.optimizer_class == "sgd":
+
+        optimizer = optim.SGD(params, lr=args.lr,
+                         momentum=args.mom,
+                         nesterov=True,
+                         weight_decay=args.weight_decay)
+
+    elif args.optimizer_class == "adam":
+        optimizer = optim.Adam(params, lr=args.lr, weight_decay=args.weight_decay)
+
+    else:
+        raise NotImplementedError(args.optimizer_class)
+
+    # select lr_scheduler
     if args.lr_scheduler == 'step':
         lr_scheduler = optim.lr_scheduler.StepLR(
                             optimizer,

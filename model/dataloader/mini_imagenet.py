@@ -26,7 +26,7 @@ def identity(x):
 def get_transforms(size, backbone, s = 1):
     color_jitter = transforms.ColorJitter(0.8 * s, 0.8 * s, 0.8 * s, 0.2 * s)
     
-    if backbone == 'ConvNet':
+    if backbone == 'Conv4':
         normalization = transforms.Normalize(np.array([0.485, 0.456, 0.406]),
                                              np.array([0.229, 0.224, 0.225]))       
     elif backbone == 'Res12':
