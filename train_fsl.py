@@ -1,3 +1,6 @@
+import sys
+from pathlib import Path
+
 import numpy as np
 import torch
 from model.trainer.fsl_trainer import FSLTrainer
@@ -6,10 +9,7 @@ from model.utils import (
     get_command_line_parser,
     postprocess_args,
 )
-# from ipdb import launch_ipdb_on_exception
 
-# np.random.seed(0)
-# torch.manual_seed(0)
 
 if __name__ == '__main__':
     parser = get_command_line_parser()
@@ -17,13 +17,14 @@ if __name__ == '__main__':
     # with launch_ipdb_on_exception():
     pprint(vars(args))
 
+    with (Path(args.save_path) / "rerun.sh").open("w") as f:
+        print("python", " ".join(sys.argv), file=f)
     set_gpu(args.gpu)
     trainer = FSLTrainer(args)
     trainer.train()
     # trainer.evaluate_test()
     # trainer.final_record()
     trainer.evaluate_test_cross_shot()
-    trainer.final_record()
     print(args.save_path)
 
 

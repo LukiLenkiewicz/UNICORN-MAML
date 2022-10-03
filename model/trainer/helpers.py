@@ -148,6 +148,7 @@ def prepare_model(args):
             pd2 = dict()
             for k, v in pretrained_dict.items():
                 if k.startswith("encoder"):
+
                     p1, p2, p3, p4 = k.split(".")
                     new_k = f"{p1}.{p2}_{p3}.{p4}"
                     pd2[new_k] = v
@@ -186,7 +187,7 @@ def prepare_optimizer(model, args):
             from model.models.hypermaml import HyperMAML
 
             assert isinstance(model, HyperMAML)
-            params = model.hn.parameters()
+            params = list(model.hn.parameters()) + list(model.encoder.fc.parameters())
 
 
 

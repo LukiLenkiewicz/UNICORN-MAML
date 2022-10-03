@@ -30,10 +30,13 @@ def set_gpu(x):
     print('using gpu:', x)
 
 def ensure_path(dir_path, scripts_to_save=None):
-    if os.path.exists(dir_path):
+    if os.path.exists(f"{dir_path}/max_acc.pth"):
         if input('{} exists, remove? ([y]/n)'.format(dir_path)) != 'n':
             shutil.rmtree(dir_path)
             os.mkdir(dir_path)
+        else:
+            print(f"{dir_path}/max_acc.pth", "exists, I quit")
+            exit(0)
     else:
         os.mkdir(dir_path)
 
@@ -131,13 +134,17 @@ def postprocess_args(args):
 
     if args.suffix != "":
         save_path2 += f"_{args.suffix}"
-            
+
+
     if not os.path.exists(args.save_dir):
         os.mkdir(args.save_dir)    
     
     if not os.path.exists(os.path.join(args.save_dir, save_path1)):
         os.mkdir(os.path.join(args.save_dir, save_path1))
     args.save_path = os.path.join(args.save_dir, save_path1, save_path2)
+
+    ensure_path(args.save_path)
+
 
     return args
 

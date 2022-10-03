@@ -23,6 +23,16 @@ class FSLTrainer(Trainer):
         super().__init__(args)
 
         self.train_loader, self.val_loader, self.test_loader = get_dataloader(args)
+
+        ####
+        tmp_dataset = args.dataset
+        args.dataset = "CUB"
+        _, _, self.cub_loader = get_dataloader(args)
+        args.dataset = tmp_dataset
+        ####
+
+
+
         self.model = prepare_model(args)
         self.optimizer, self.lr_scheduler = prepare_optimizer(self.model, args)
         
@@ -292,7 +302,7 @@ class FSLTrainer(Trainer):
             self.running_dict[e]['mean_copy'] = deepcopy(self.running_dict[e]['mean'])
             self.running_dict[e]['var_copy'] = deepcopy(self.running_dict[e]['var'])        
         # num_shots = [1, 5, 10, 20, 30, 50]
-        num_shots = [1, 5]
+        num_shots = [1,5] #[args.shot] #[1, 5]
         record = np.zeros((args.num_test_episodes, len(num_shots))) # loss and acc
         label = torch.arange(args.eval_way, dtype=torch.int16).repeat(args.eval_query)
         label = label.type(torch.LongTensor)
@@ -302,46 +312,56 @@ class FSLTrainer(Trainer):
             self.trlog['max_acc_epoch'],
                     self.trlog['max_acc'],
                     self.trlog['max_acc_interval']))
-        for s_index, shot in enumerate(num_shots):
-            test_loader = get_cross_shot_dataloader(args, shot)
-            args.eval_shot = shot
-            args.old_way, args.old_shot, args.old_query = args.way, args.shot, args.query
-            args.way, args.shot, args.query = args.eval_way, args.eval_shot, args.eval_query        
-            for i, batch in tqdm(enumerate(test_loader, 1)):
-                if torch.cuda.is_available():
-                    data = batch[0].cuda()
-                else:
-                    data = batch[0]
-    
-                support = data[:args.eval_way * shot]
-                query = data[args.eval_way * shot:]    
-                logits = self.model.forward_eval(support, query)
-                for e in self.running_dict:
-                    self.running_dict[e]['mean'] = deepcopy(self.running_dict[e]['mean_copy'])
-                    self.running_dict[e]['var'] = deepcopy(self.running_dict[e]['mean_copy'])
-                
-                loss = F.cross_entropy(logits, label)
-                acc = count_acc(logits, label)
-                record[i-1, s_index] = acc
-                del data, support, query, logits, loss
-                torch.cuda.empty_cache()
 
-            assert (i == record.shape[0]), (i, record.shape)
-
-            va, vap = compute_confidence_interval(record[:,s_index])
-            print('Shot {} Test acc={:.4f} + {:.4f}\n'.format(shot, va, vap))
-            args.way, args.shot, args.query = args.old_way, args.old_shot, args.old_query
-
-        with open(osp.join(self.args.save_path, '{}+{}-CrossShot'.format(va, vap)), 'w') as f:
-            f.write('best epoch {}, best val acc={:.4f} + {:.4f}\n'.format(
-                    self.trlog['max_acc_epoch'],
-                    self.trlog['max_acc'],
-                    self.trlog['max_acc_interval']))                
+        tmp_set = args.dataset
+        for test_set in [
+            "MiniImageNet",
+            "CUB"
+        ]:
             for s_index, shot in enumerate(num_shots):
+                args.dataset = test_set
+                print("Evaluating on", test_set)
+                test_loader = get_cross_shot_dataloader(args, shot)
+                args.eval_shot = shot
+                args.old_way, args.old_shot, args.old_query = args.way, args.shot, args.query
+                args.way, args.shot, args.query = args.eval_way, args.eval_shot, args.eval_query
+                for i, batch in tqdm(enumerate(test_loader, 1)):
+                    if torch.cuda.is_available():
+                        data = batch[0].cuda()
+                    else:
+                        data = batch[0]
+
+                    support = data[:args.eval_way * shot]
+                    query = data[args.eval_way * shot:]
+                    logits = self.model.forward_eval(support, query)
+                    for e in self.running_dict:
+                        self.running_dict[e]['mean'] = deepcopy(self.running_dict[e]['mean_copy'])
+                        self.running_dict[e]['var'] = deepcopy(self.running_dict[e]['mean_copy'])
+
+                    loss = F.cross_entropy(logits, label)
+                    acc = count_acc(logits, label)
+                    record[i-1, s_index] = acc
+                    del data, support, query, logits, loss
+                    torch.cuda.empty_cache()
+
+                assert (i == record.shape[0]), (i, record.shape)
+
                 va, vap = compute_confidence_interval(record[:,s_index])
-                f.write('Shot {} Test acc={:.4f} + {:.4f}\n'.format(shot, va, vap))
-                
-    
+                print('Shot {} Test acc={:.4f} + {:.4f}\n'.format(shot, va, vap))
+                args.way, args.shot, args.query = args.old_way, args.old_shot, args.old_query
+
+            with open(osp.join(self.args.save_path, f'{va}+{vap}-CrossShot-{test_set}'), 'w') as f:
+                f.write('best epoch {}, best val acc={:.4f} + {:.4f}\n'.format(
+                        self.trlog['max_acc_epoch'],
+                        self.trlog['max_acc'],
+                        self.trlog['max_acc_interval']))
+                for s_index, shot in enumerate(num_shots):
+                    va, vap = compute_confidence_interval(record[:,s_index])
+                    f.write('Shot {} Test acc={:.4f} + {:.4f}\n'.format(shot, va, vap))
+
+                    self.logger.add_scalar(f"{test_set} Test acc {shot}-shot", value=va, counter=0)
+                    self.logger.add_scalar(f"{test_set} Test std {shot}-shot", value=vap, counter=0)
+
     def final_record(self):
         # save the best performance in a txt file
 
