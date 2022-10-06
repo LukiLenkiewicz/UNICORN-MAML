@@ -2,9 +2,33 @@ import os
 import shutil
 import time
 import pprint
+from pathlib import Path
+
 import torch
 import argparse
 import numpy as np
+import wandb
+
+
+def maybe_setup_wandb(args):
+
+    dir_path = Path(args.save_path)
+    wandb_entity = os.environ.get("WANDB_ENTITY")
+    wandb_project = os.environ.get("WANDB_PROJECT")
+
+    if wandb_entity is None or wandb_project is None:
+        print(f"{wandb_entity=}", f"{wandb_project=}")
+        print("Not initializing WANDB")
+
+        return
+
+    run_name = f"{dir_path.parent.name}/{dir_path.name}"
+
+    wandb.init(entity=wandb_entity, project=wandb_project, config=args, name=run_name, dir=dir_path, sync_tensorboard=True)
+
+    print("WANDB run", wandb.run.id, run_name)
+
+
 
 def one_hot(indices, depth):
     """
@@ -38,6 +62,8 @@ def ensure_path(dir_path, scripts_to_save=None):
             print(f"{dir_path}/max_acc.pth", "exists, I quit")
             exit(0)
     else:
+        if os.path.exists(dir_path):
+            shutil.rmtree(dir_path)
         os.mkdir(dir_path)
 
     print('Experiment dir : {}'.format(dir_path))

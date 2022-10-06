@@ -159,6 +159,13 @@ We can evaluate a learned MAML model and check whether the permutation will intr
 	$ python eval_maml_permutation.py --shot_list 1 --model_path './MAML-1-shot.pth' --gpu 0 --gd_lr 0.05 --inner_iters 15  --model_class MAML --dataset MiniImageNet
 	$ python eval_maml_permutation.py --shot_list 5 --model_path './MAML-5-shot.pth' --gpu 0 --gd_lr 0.1 --inner_iters 20  --model_class MAML --dataset MiniImageNet
 
+## WANDB
+
+For reporting the training process to Weights and Biases, you must export 3 env variables before training:
+
+* `WANDB_API_KEY` - your personal API key
+* `WANDB_ENTITY` - your username / org name
+* `WANDB_PROJECT` - name of the project on WANDB
 
 ## Acknowledgment
 We thank the following repos providing helpful components/functions in our work.

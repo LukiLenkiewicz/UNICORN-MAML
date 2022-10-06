@@ -3,6 +3,7 @@ import os.path as osp
 import numpy as np
 from collections import defaultdict, OrderedDict
 from tensorboardX import SummaryWriter
+from model.utils import maybe_setup_wandb
 
 class ConfigEncoder(json.JSONEncoder):
     def default(self, o):
@@ -19,15 +20,17 @@ class ConfigEncoder(json.JSONEncoder):
         return json.JSONEncoder.default(self, o)
 
 class Logger(object):
-    def __init__(self, args, log_dir, **kwargs):
-        self.logger_path = osp.join(log_dir, 'scalars.json')
+    def __init__(self, args, **kwargs):
+        maybe_setup_wandb(args)
+        self.logger_path = osp.join(args.save_path, 'scalars.json')
         self.tb_logger = SummaryWriter(
-                            logdir=osp.join(log_dir, 'tflogger'),
+                            logdir=osp.join(args.save_path, 'tflogger'),
                             **kwargs,
                         )
         self.log_config(vars(args))
 
         self.scalars = defaultdict(OrderedDict)
+
 
     def add_scalar(self, key, value, counter):
         assert self.scalars[key].get(counter, None) is None, 'counter should be distinct'

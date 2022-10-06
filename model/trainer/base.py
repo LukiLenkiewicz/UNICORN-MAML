@@ -16,7 +16,7 @@ class Trainer(object, metaclass=abc.ABCMeta):
         #     self.args.save_path,
         #     scripts_to_save=['model/models', 'model/networks', __file__],
         # )
-        self.logger = Logger(args, osp.join(args.save_path))
+        self.logger = Logger(args)
 
         self.train_step = 0
         self.train_epoch = 0
