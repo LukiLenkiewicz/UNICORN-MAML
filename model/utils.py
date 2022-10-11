@@ -191,7 +191,7 @@ def get_command_line_parser():
     parser.add_argument('--dataset', type=str, default='MiniImageNet', 
                         choices=['MiniImageNet', 'TieredImageNet', 'CUB'])
     parser.add_argument('--model_class', type=str, default='MAML', 
-                        choices=['MAML', 'MAMLUnicorn', "HyperMAML"])
+                        choices=['MAML', 'MAMLUnicorn', "HyperMAML", "InvariantMAML"])
  
     # optimization parameters
     parser.add_argument('--lr', type=float, default=0.001)
@@ -213,6 +213,11 @@ def get_command_line_parser():
                         choices=['orth', 'gaussian', 'limitedOrth', 'PCA'])
     parser.add_argument('--noise_ratio', type=float, default=0.1)
     
+    # invariant maml related parameters
+    parser.add_argument('--predicted_perm_train', action='store_true', help='Whether to train the model with the labels permuted by the output of the ranker (ranker returns permutation)')
+    parser.add_argument('--ranker_depth', type=int, default=1, help='The depth of ranker')
+    parser.add_argument('--ranker_width', type=int, default=256, help='The width of ranker')
+
     # usually untouched parameters
     parser.add_argument('--mom', type=float, default=0.9)
     parser.add_argument('--weight_decay', type=float, default=0.0005)

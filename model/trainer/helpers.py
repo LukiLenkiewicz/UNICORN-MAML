@@ -136,6 +136,9 @@ def prepare_model(args):
     elif args.model_class == "HyperMAML":
         from model.models.hypermaml import HyperMAML
         model = HyperMAML(args)
+    elif args.model_class == "InvariantMAML":
+        from model.models.invariantmaml import InvariantMAML
+        model = InvariantMAML(args)
     else:
         raise ValueError('No Such Model')
     

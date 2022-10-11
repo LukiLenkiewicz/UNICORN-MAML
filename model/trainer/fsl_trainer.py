@@ -142,8 +142,17 @@ class FSLTrainer(Trainer):
 
                 support = data[:args.way * args.shot]
                 query = data[args.way * args.shot:]
-                logits = self.model(support, query)
-                loss = F.cross_entropy(logits, label)
+                
+                if self.args.model_class == "InvariantMAML":
+                    logits, pred_perm_ranking_scores, labels_permutation = self.model(support, query)
+                    # map labels using found permutation
+                    for i in range(label.shape[0]):
+                        label[i] = torch.tensor(labels_permutation[label[i].item()]).cuda()
+                    loss = F.cross_entropy(logits, label) + F.cross_entropy(pred_perm_ranking_scores, torch.tensor([self.model.permutation_to_idx[labels_permutation]]).cuda())
+                else:
+                    logits = self.model(support, query)
+                    loss = F.cross_entropy(logits, label)
+
                 tl2.add(loss.item())
                 
                 forward_tm = time.time()
@@ -206,12 +215,21 @@ class FSLTrainer(Trainer):
 
             support = data[:args.eval_way * args.eval_shot]
             query = data[args.eval_way * args.eval_shot:]
-            logits = self.model.forward_eval(support, query)
+
+            if self.args.model_class == "InvariantMAML":
+                logits, pred_perm_ranking_scores, labels_permutation = self.model.forward_eval(support, query)
+                # map labels using found permutation
+                for i in range(label.shape[0]):
+                    label[i] = torch.tensor(labels_permutation[label[i].item()]).cuda()
+                loss = F.cross_entropy(logits, label) + F.cross_entropy(pred_perm_ranking_scores, torch.tensor([self.model.permutation_to_idx[labels_permutation]]).cuda())
+            else:
+                logits = self.model.forward_eval(support, query)
+                loss = F.cross_entropy(logits, label)
+            
             for e in self.running_dict:
                 self.running_dict[e]['mean'] = deepcopy(self.running_dict[e]['mean_copy'])
                 self.running_dict[e]['var'] = deepcopy(self.running_dict[e]['mean_copy'])
                 
-            loss = F.cross_entropy(logits, label)
             acc = count_acc(logits, label)
             record[i-1, 0] = loss.item()
             record[i-1, 1] = acc
@@ -260,12 +278,21 @@ class FSLTrainer(Trainer):
 
             support = data[:args.eval_way * args.eval_shot]
             query = data[args.eval_way * args.eval_shot:]
-            logits = self.model.forward_eval(support, query)
+            
+            if self.args.model_class == "InvariantMAML":
+                logits, pred_perm_ranking_scores, labels_permutation = self.model.forward_eval(support, query)
+                # map labels using found permutation
+                for i in range(label.shape[0]):
+                    label[i] = torch.tensor(labels_permutation[label[i].item()]).cuda()
+                loss = F.cross_entropy(logits, label) + F.cross_entropy(pred_perm_ranking_scores, torch.tensor([self.model.permutation_to_idx[labels_permutation]]).cuda())
+            else:
+                logits = self.model.forward_eval(support, query)
+                loss = F.cross_entropy(logits, label)
+
             for e in self.running_dict:
                 self.running_dict[e]['mean'] = deepcopy(self.running_dict[e]['mean_copy'])
                 self.running_dict[e]['var'] = deepcopy(self.running_dict[e]['mean_copy'])
-                    
-            loss = F.cross_entropy(logits, label)
+
             acc = count_acc(logits, label)
             record[i-1, 0] = loss.item()
             record[i-1, 1] = acc
@@ -333,7 +360,17 @@ class FSLTrainer(Trainer):
 
                     support = data[:args.eval_way * shot]
                     query = data[args.eval_way * shot:]
-                    logits = self.model.forward_eval(support, query)
+                    
+                    if self.args.model_class == "InvariantMAML":
+                        logits, pred_perm_ranking_scores, labels_permutation = self.model.forward_eval(support, query)
+                        # map labels using found permutation
+                        for i in range(label.shape[0]):
+                            label[i] = torch.tensor(labels_permutation[label[i].item()]).cuda()
+                        loss = F.cross_entropy(logits, label) + F.cross_entropy(pred_perm_ranking_scores, torch.tensor([self.model.permutation_to_idx[labels_permutation]]).cuda())
+                    else:
+                        logits = self.model.forward_eval(support, query)
+                        loss = F.cross_entropy(logits, label)
+                    
                     for e in self.running_dict:
                         self.running_dict[e]['mean'] = deepcopy(self.running_dict[e]['mean_copy'])
                         self.running_dict[e]['var'] = deepcopy(self.running_dict[e]['mean_copy'])
