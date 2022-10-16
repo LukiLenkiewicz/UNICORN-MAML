@@ -24,7 +24,7 @@ def maybe_setup_wandb(args):
 
     run_name = f"{dir_path.parent.name}/{dir_path.name}"
 
-    wandb.init(entity=wandb_entity, project=wandb_project, config=args, name=run_name, dir=dir_path, sync_tensorboard=True)
+    wandb.init(entity=wandb_entity, project=wandb_project, config=args, name=run_name, dir=str(dir_path), sync_tensorboard=True)
 
     print("WANDB run", wandb.run.id, run_name)
 

@@ -66,7 +66,7 @@ def inner_train_step(model, support_data, ranker, permutations, args):
 
     avg_enhanced_embeddings = get_enhanced_embeddings(model, support_data, args)
     pred_perm_ranking_scores = ranker(avg_enhanced_embeddings.view(1, -1))
-    
+
     return best_params, pred_perm_ranking_scores, best_permutation
 
 def inner_test_step(model, support_data, ranker, idx_to_permutation, args):
@@ -171,10 +171,10 @@ class InvariantMAML(nn.Module):
         # update with gradient descent
         self.train()
         updated_params, pred_perm_ranking_scores, labels_permutation = inner_test_step(model=self.encoder,
-                                                            support_data=data_shot,
-                                                            ranker=self.ranker,
-                                                            idx_to_permutation=self.idx_to_permutation,
-                                                            args=self.args)
+                                                                                       support_data=data_shot,
+                                                                                       ranker=self.ranker,
+                                                                                       idx_to_permutation=self.idx_to_permutation,
+                                                                                       args=self.args)
 
         # get shot accuracy and loss
         self.eval()
