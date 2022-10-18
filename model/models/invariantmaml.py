@@ -125,14 +125,21 @@ class InvariantMAML(nn.Module):
 
     def forward(self, data_shot, data_query):
         # update with gradient descent
-        updated_params, pred_perm_ranking_scores, labels_permutation = inner_train_step(model=self.encoder,
-                                                                                        support_data=data_shot,
-                                                                                        ranker=self.ranker,
-                                                                                        permutations=self.permutation_to_idx.keys(),
-                                                                                        args=self.args)
+        updated_params, pred_perm_ranking_scores, best_permutation = inner_train_step(model=self.encoder,
+                                                                                      support_data=data_shot,
+                                                                                      ranker=self.ranker,
+                                                                                      permutations=self.permutation_to_idx.keys(),
+                                                                                      args=self.args)
+
+        predicted_permutation = self.idx_to_permutation[pred_perm_ranking_scores.argmax(dim=1).item()]
+
+        if self.args.predicted_perm_train:
+            result_permutation = predicted_permutation
+        else:
+            result_permutation = best_permutation
 
         logitis = self.encoder(data_query, updated_params) / self.args.temperature
-        return logitis, pred_perm_ranking_scores, labels_permutation
+        return logitis, pred_perm_ranking_scores, result_permutation
 
     def forward_eval_perm(self, data_shot, data_query):
         # update with gradient descent
