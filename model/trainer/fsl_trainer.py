@@ -132,9 +132,11 @@ class FSLTrainer(Trainer):
             if self.args.fix_BN:
                 self.model.encoder.eval()
             
-            tl1, tl2, ta, trl = Averager(), Averager(), Averager(), None
+            tl1, tl2, ta, trl, tra = Averager(), Averager(), Averager(), None, None
             if self.args.model_class == INVARIANT_MAML:
                 trl = Averager()
+                tra = Averager()
+                tra_pos_list = [Averager() for i in range(args.way)]
             start_tm = time.time()
             self.model.zero_grad()
 
@@ -152,9 +154,13 @@ class FSLTrainer(Trainer):
                 query = data[args.way * args.shot:]
 
                 if self.args.model_class == INVARIANT_MAML:
-                    logits, pred_perm_ranking_scores, labels_permutation = self.model(support, query)
+                    logits, pred_perm_ranking_scores, labels_permutation, metrics = self.model(support, query)
                     # map labels using found permutation
                     label = self.prepare_label(labels_permutation)
+
+                    tra.add(metrics["permutation"])
+                    for i in range(args.way):
+                        tra_pos_list[i].add(metrics[f"permutation_pos{i}"])
 
                     ranker_loss = F.cross_entropy(pred_perm_ranking_scores, torch.tensor([self.model.permutation_to_idx[labels_permutation]]).cuda())
                     trl.add(ranker_loss.item())
@@ -180,7 +186,7 @@ class FSLTrainer(Trainer):
                 self.ot.add(optimizer_tm - backward_tm)                    
                 self.model.zero_grad()
                     
-                self.try_logging(tl1, tl2, ta, None, trl)
+                self.try_logging(tl1, tl2, ta, None, trl, tra, tra_pos_list)
                 # refresh start_tm
                 start_tm = time.time()
 

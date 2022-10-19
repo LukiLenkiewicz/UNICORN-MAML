@@ -62,12 +62,14 @@ class Trainer(object, metaclass=abc.ABCMeta):
                 self.trlog['max_acc_epoch'] = self.train_epoch
                 self.save_model('max_acc')
 
-    def try_logging(self, tl1, tl2, ta, tat=None, trl=None):
+    def try_logging(self, tl1, tl2, ta, tat=None, trl=None, tra=None, tra_pos_list=None):
         args = self.args
         if self.train_step % args.log_interval == 0:
             log_info = 'epoch {}, train {:06g}/{:06g}, total loss={:.4f}'.format(self.train_epoch, self.train_step, self.max_steps, tl1.item())
             if trl is not None:
                 log_info += ', ranker loss={:.4f}'.format(trl.item())
+            if tra is not None:
+                log_info += ', ranker acc={:.4f}'.format(tra.item())
             log_info += ', loss={:.4f} acc={:.4f}, lr={:.4g}'.format(tl2.item(), ta.item(), self.optimizer.param_groups[0]['lr'])
             print(log_info)
 
@@ -75,9 +77,15 @@ class Trainer(object, metaclass=abc.ABCMeta):
             self.logger.add_scalar('train_loss', tl2.item(), self.train_step)
             self.logger.add_scalar('train_acc',  ta.item(), self.train_step)
             if tat is not None:
-                self.logger.add_scalar('train_acc_T',  tat.item(), self.train_step)
+                self.logger.add_scalar('train_acc_T', tat.item(), self.train_step)
             if trl is not None:
-                self.logger.add_scalar('train_ranker_loss',  trl.item(), self.train_step)
+                self.logger.add_scalar('train_ranker_loss', trl.item(), self.train_step)
+            if tra is not None:
+                self.logger.add_scalar('train_ranker_acc', tra.item(), self.train_step)
+            if tra_pos_list is not None:
+                for i in range(len(tra_pos_list)):
+                    self.logger.add_scalar(f'train_ranker_acc_pos{i}', tra_pos_list[i].item(), self.train_step)
+
             print('data_timer: {:.2f} sec, '     \
                   'forward_timer: {:.2f} sec,'   \
                   'backward_timer: {:.2f} sec, ' \

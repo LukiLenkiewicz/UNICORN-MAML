@@ -139,7 +139,12 @@ class InvariantMAML(nn.Module):
             result_permutation = best_permutation
 
         logitis = self.encoder(data_query, updated_params) / self.args.temperature
-        return logitis, pred_perm_ranking_scores, result_permutation
+        
+        metrics = { "permutation": 1 if predicted_permutation == best_permutation else 0}
+        for i, (pp, bp) in enumerate(zip(predicted_permutation, best_permutation)):
+            metrics[f"permutation_pos{i}"] = 1 if pp == bp else 0
+
+        return logitis, pred_perm_ranking_scores, result_permutation, metrics
 
     def forward_eval_perm(self, data_shot, data_query):
         # update with gradient descent
