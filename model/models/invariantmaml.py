@@ -7,6 +7,7 @@ import itertools
 from collections import OrderedDict
 from model.utils import count_acc
 from operator import itemgetter
+from model.models.ranker import Ranker
 
 def update_params(loss, params, step_size=0.5, first_order=True):
     name_list, tensor_list = zip(*params.items())
@@ -199,38 +200,3 @@ class InvariantMAML(nn.Module):
         with torch.no_grad():
             logitis_query = self.encoder(data_query, updated_params) / self.args.temperature
         return logitis_query, pred_perm_ranking_scores, labels_permutation
-
-
-class Ranker(nn.Module):
-    def __init__(self, args, hdim, last_activation_fn='sigmoid'):
-        super(Ranker, self).__init__()
-
-        self.hdim = hdim
-        self.depth = args.ranker_depth
-        self.width = args.ranker_width
-        self.in_neurons = (self.hdim + 2 * args.way) * args.way
-        self.out_neurons = math.factorial(args.way)
-
-        layers = []
-        
-        for i in range(self.depth):
-            in_neurons_num = self.in_neurons if i == 0 else self.width
-            out_neurons_num = self.out_neurons if i == self.depth - 1 else self.width
-            
-            layers.append(nn.Linear(in_neurons_num, out_neurons_num))
-            
-            if i < self.depth - 1:
-                layers.append(nn.ReLU())
-
-        if last_activation_fn == 'relu':
-            layers.append(nn.ReLU())
-        elif last_activation_fn == 'sigmoid':
-            layers.append(nn.Sigmoid())
-        else:
-            layers.append(nn.Sigmoid())
-
-        self.layers = nn.Sequential(*layers)
-
-    def forward(self, x):
-        return self.layers(x)
-
