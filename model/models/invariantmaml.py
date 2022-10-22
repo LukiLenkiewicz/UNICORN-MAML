@@ -6,6 +6,7 @@ import math
 import itertools
 from collections import OrderedDict
 from model.utils import count_acc
+from operator import itemgetter
 
 def update_params(loss, params, step_size=0.5, first_order=True):
     name_list, tensor_list = zip(*params.items())
@@ -43,7 +44,12 @@ def inner_train_step(model, support_data, ranker, permutations, args):
     best_params = None
     max_acc = 0.0
 
-    for base_permutation in permutations:
+    indices = list(range(len(permutations)))
+    if args.draw_permutation_train_ratio >= 0.0 and args.draw_permutation_train_ratio <= 1.0:
+        size = np.floor(math.factorial(args.way) * args.draw_permutation_train_ratio).astype(int)
+        indices = np.random.choice(indices, size=size, replace=False)
+
+    for base_permutation in itemgetter(*indices)(list(permutations)):
         # obtain final prediction
         updated_params = OrderedDict(model.named_parameters())
         label = torch.tensor(base_permutation).repeat(args.shot)

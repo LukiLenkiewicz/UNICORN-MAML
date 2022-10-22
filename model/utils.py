@@ -217,6 +217,7 @@ def get_command_line_parser():
     parser.add_argument('--predicted_perm_train', action='store_true', help='Whether to train the model with the labels permuted by the output of the ranker (ranker returns permutation)')
     parser.add_argument('--ranker_depth', type=int, default=1, help='The depth of ranker')
     parser.add_argument('--ranker_width', type=int, default=256, help='The width of ranker')
+    parser.add_argument('--draw_permutation_train_ratio', type=float, default=-1.0, help='Ratio indicating the number of randomly chosen permutations being considered during training out of the total number of permutations')
 
     # usually untouched parameters
     parser.add_argument('--mom', type=float, default=0.9)
