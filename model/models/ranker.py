@@ -3,15 +3,20 @@ import torch.nn as nn
 import math
 
 class Ranker(nn.Module):
-    def __init__(self, args, hdim, last_activation_fn='sigmoid'):
+    def __init__(self, args, hdim, out_neurons, last_activation_fn='sigmoid'):
         super(Ranker, self).__init__()
 
+        self.args = args
         self.hdim = hdim
         self.depth = args.ranker_depth
         self.width = args.ranker_width
-        self.in_neurons = (self.hdim + 2 * args.way) * args.way
-        self.out_neurons = math.factorial(args.way)
-
+        self.out_neurons = out_neurons
+        
+        if args.feed_heads_with_support_embeddings:
+            self.in_neurons = (self.hdim + 2 * args.way) * args.way
+        else:
+            self.in_neurons = (self.hdim + 2 * args.way)
+            
         layers = []
         
         for i in range(self.depth):

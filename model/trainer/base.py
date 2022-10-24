@@ -62,29 +62,35 @@ class Trainer(object, metaclass=abc.ABCMeta):
                 self.trlog['max_acc_epoch'] = self.train_epoch
                 self.save_model('max_acc')
 
-    def try_logging(self, tl1, tl2, ta, tat=None, trl=None, tra=None, tra_pos_list=None):
+    def try_logging(self, averagers):
         args = self.args
         if self.train_step % args.log_interval == 0:
-            log_info = 'epoch {}, train {:06g}/{:06g}, total loss={:.4f}'.format(self.train_epoch, self.train_step, self.max_steps, tl1.item())
-            if trl is not None:
-                log_info += ', ranker loss={:.4f}'.format(trl.item())
-            if tra is not None:
-                log_info += ', ranker acc={:.4f}'.format(tra.item())
-            log_info += ', loss={:.4f} acc={:.4f}, lr={:.4g}'.format(tl2.item(), ta.item(), self.optimizer.param_groups[0]['lr'])
+            log_info = 'epoch {}, train {:06g}/{:06g}, total loss={:.4f}'.format(self.train_epoch, self.train_step, self.max_steps, averagers["tl1"].item())
+            if averagers["trl"] is not None:
+                log_info += ', ranker loss={:.4f}'.format(averagers["trl"].item())
+            if averagers["tra"] is not None:
+                log_info += ', ranker acc={:.4f}'.format(averagers["tra"].item())
+            log_info += ', loss={:.4f} acc={:.4f}, lr={:.4g}'.format(averagers["tl2"].item(), averagers["ta"].item(), self.optimizer.param_groups[0]['lr'])
             print(log_info)
 
-            self.logger.add_scalar('train_total_loss', tl1.item(), self.train_step)
-            self.logger.add_scalar('train_loss', tl2.item(), self.train_step)
-            self.logger.add_scalar('train_acc',  ta.item(), self.train_step)
-            if tat is not None:
-                self.logger.add_scalar('train_acc_T', tat.item(), self.train_step)
-            if trl is not None:
-                self.logger.add_scalar('train_ranker_loss', trl.item(), self.train_step)
-            if tra is not None:
-                self.logger.add_scalar('train_ranker_acc', tra.item(), self.train_step)
-            if tra_pos_list is not None:
-                for i in range(len(tra_pos_list)):
-                    self.logger.add_scalar(f'train_ranker_acc_pos{i}', tra_pos_list[i].item(), self.train_step)
+            self.logger.add_scalar('train_total_loss', averagers["tl1"].item(), self.train_step)
+            self.logger.add_scalar('train_loss', averagers["tl2"].item(), self.train_step)
+            self.logger.add_scalar('train_acc',  averagers["ta"].item(), self.train_step)
+            if averagers["tat"] is not None:
+                self.logger.add_scalar('train_acc_T', averagers["tat"].item(), self.train_step)
+            if averagers["trl"] is not None:
+                self.logger.add_scalar('train_ranker_loss', averagers["trl"].item(), self.train_step)
+            if averagers["tra"] is not None:
+                self.logger.add_scalar('train_ranker_acc', averagers["tra"].item(), self.train_step)
+            if averagers["tra_pos_list"] is not None and type(averagers["tra_pos_list"]) is list:
+                for i in range(len(averagers["tra_pos_list"])):
+                    self.logger.add_scalar(f'train_ranker_acc_pos{i}', averagers["tra_pos_list"][i].item(), self.train_step)
+            if averagers["trl_list"] is not None and type(averagers["trl_list"]) is list:
+                for i in range(len(averagers["trl_list"])):
+                    self.logger.add_scalar(f'train_ranker_loss_{i}', averagers["trl_list"][i].item(), self.train_step)
+            if averagers["tra_list"] is not None and type(averagers["tra_list"]) is list:
+                for i in range(len(averagers["tra_list"])):
+                    self.logger.add_scalar(f'train_ranker_acc_{i}', averagers["tra_list"][i].item(), self.train_step)
 
             print('data_timer: {:.2f} sec, '     \
                   'forward_timer: {:.2f} sec,'   \

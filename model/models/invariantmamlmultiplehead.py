@@ -1,3 +1,4 @@
+from email.mime import base
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -30,11 +31,11 @@ def get_enhanced_embeddings(model, support_data, args):
 
     avg_enhanced_embeddings = []
 
-    for l in set(label.cpu().numpy()):
+    for l in label.tolist():
         avg_enhanced_embeddings.append(
             enhanced_embeddings[label==l].mean(dim=0)
         )
-
+    
     avg_enhanced_embeddings = torch.stack(avg_enhanced_embeddings)
     return avg_enhanced_embeddings
 
@@ -54,7 +55,7 @@ def inner_train_step(model, support_data, args, permutation):
         updated_params = update_params(loss, updated_params, step_size=args.gd_lr, first_order=True)
     return updated_params
 
-class InvariantMAML(nn.Module):
+class InvariantMAMLMultipleHead(nn.Module):
 
     def __init__(self, args):
         super().__init__()
@@ -74,14 +75,19 @@ class InvariantMAML(nn.Module):
         self.hdim = hdim
         self.encoder.fc = nn.Linear(hdim, args.way)
         
-        self.ranker = Ranker(args, hdim, math.factorial(args.way))
-
+        self._init_ranker_heads()
+        
         self.permutation_to_idx = OrderedDict()
         self.idx_to_permutation = OrderedDict()
 
         for i, p in enumerate(itertools.permutations(list(range(args.way)))):
             self.permutation_to_idx[p] = i
             self.idx_to_permutation[i] = p
+
+    def _init_ranker_heads(self):
+        self.ranker_heads = nn.ModuleList()
+        for _ in range(self.args.way):
+            self.ranker_heads.append(Ranker(self.args, self.hdim, self.args.way))
 
     def forward(self, data_shot, data_query, permutation):
         # update with gradient descent
@@ -93,22 +99,33 @@ class InvariantMAML(nn.Module):
         logitis = self.encoder(data_query, updated_params) / self.args.temperature
         return logitis
 
-    def train_ranker(self, support_data, best_permutation, args):
+    def train_ranker_heads(self, support_data, best_permutation, args):
         avg_enhanced_embeddings = get_enhanced_embeddings(self.encoder, support_data, args)
-        
-        scores = self.ranker(avg_enhanced_embeddings.view(1, -1)).flatten()
-        
-        predicted_permutation_idx = scores.argmax(dim=0).item()
-        best_permutation_idx = self.permutation_to_idx[best_permutation]
-        
-        predicted_permutation = self.idx_to_permutation[predicted_permutation_idx]
-        
-        metrics = { "permutation": 1 if predicted_permutation_idx == best_permutation_idx else 0 }
-        for i in range(args.way):
-            metrics[f"permutation_pos{i}"] = 1 if predicted_permutation[i] == best_permutation[i] else 0
+        total_heads_loss = 0.0
 
-        expected = torch.tensor(best_permutation_idx).cuda()
-        return F.cross_entropy(scores, expected), metrics
+        metrics = {}
+        scores = torch.zeros((args.way, args.way))
+        for i in range(len(self.ranker_heads)):
+            if self.args.feed_heads_with_support_embeddings:
+                head_loss, head_scores = self.train_single_head(avg_enhanced_embeddings, i, best_permutation)
+            else:
+                head_loss, head_scores = self.train_single_head(avg_enhanced_embeddings[i].view(1, -1), i, best_permutation)
+            scores[i] = head_scores
+            total_heads_loss += head_loss
+            metrics[f"ranker_loss{i}"] = head_loss.item()
+        
+        predicted_permutation = tuple(scores.max(dim=1).indices)
+        
+        metrics["permutation"] = 1 if predicted_permutation == best_permutation else 0
+        for i in range(args.way):
+            metrics[f"ranker_accuracy{i}"] = 1 if predicted_permutation[i] == best_permutation[i] else 0 
+        
+        return total_heads_loss, metrics
+
+    def train_single_head(self, avg_enhanced_embeddings, head_index, permutation):
+        scores = self.ranker_heads[head_index](avg_enhanced_embeddings.view(1, -1)).flatten()
+        expected = torch.tensor(permutation[head_index]).cuda()
+        return F.cross_entropy(scores, expected), scores
 
     def forward_eval_perm(self, data_shot, data_query):
         # update with gradient descent
@@ -148,10 +165,16 @@ class InvariantMAML(nn.Module):
         self.train()
         avg_enhanced_embeddings = get_enhanced_embeddings(self.encoder, data_shot, args)
         
-        scores = self.ranker(avg_enhanced_embeddings.view(1, -1)).flatten()
+        scores = torch.zeros((args.way, args.way))
+        for i in range(len(self.ranker_heads)):
+            if args.feed_heads_with_support_embeddings:
+                head_scores = self.ranker_heads[i](avg_enhanced_embeddings.view(1, -1)).flatten()
+                scores[i] = head_scores
+            else:
+                head_scores = self.ranker_heads[i](avg_enhanced_embeddings[i].view(1, -1)).flatten()
+                scores[i] = head_scores
         
-        predicted_permutation_idx = scores.argmax(dim=0).item()
-        predicted_permutation = self.idx_to_permutation[predicted_permutation_idx]
+        predicted_permutation = tuple(scores.max(dim=1).indices)
         
         updated_params = inner_train_step(model=self.encoder,
                                           support_data=data_shot,

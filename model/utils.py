@@ -191,7 +191,7 @@ def get_command_line_parser():
     parser.add_argument('--dataset', type=str, default='MiniImageNet', 
                         choices=['MiniImageNet', 'TieredImageNet', 'CUB'])
     parser.add_argument('--model_class', type=str, default='MAML', 
-                        choices=['MAML', 'MAMLUnicorn', "HyperMAML", "InvariantMAML"])
+                        choices=['MAML', 'MAMLUnicorn', "HyperMAML", "InvariantMAML", "InvariantMAMLMultipleHead"])
  
     # optimization parameters
     parser.add_argument('--lr', type=float, default=0.001)
@@ -218,6 +218,7 @@ def get_command_line_parser():
     parser.add_argument('--ranker_depth', type=int, default=1, help='The depth of ranker')
     parser.add_argument('--ranker_width', type=int, default=256, help='The width of ranker')
     parser.add_argument('--draw_permutation_train_ratio', type=float, default=-1.0, help='Ratio indicating the number of randomly chosen permutations being considered during training out of the total number of permutations')
+    parser.add_argument('--feed_heads_with_support_embeddings', action='store_true', help='Whether to pass the whole set of support embeddings on the input to every single ranker head. Only applicable to InvariantMAMLMultipleHead model.')
 
     # usually untouched parameters
     parser.add_argument('--mom', type=float, default=0.9)
