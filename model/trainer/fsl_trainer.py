@@ -22,6 +22,7 @@ from tqdm import tqdm
 
 INVARIANT_MAML = "InvariantMAML"
 INVARIANT_MAML_MULTIPLE_HEAD = "InvariantMAMLMultipleHead"
+INVARIANT_MAML_ATTN = "InvariantMAMLAttn"
 
 class FSLTrainer(Trainer):
     def __init__(self, args):
@@ -142,7 +143,7 @@ class FSLTrainer(Trainer):
                 "ta": Averager()
             })
             
-            if self.args.model_class == INVARIANT_MAML:
+            if self.args.model_class in [INVARIANT_MAML, INVARIANT_MAML_ATTN]:
                 averagers["trl"] = Averager()
                 averagers["tra"] = Averager()
                 averagers["tra_pos_list"] = [Averager() for _ in range(args.way)]
@@ -154,7 +155,7 @@ class FSLTrainer(Trainer):
             start_tm = time.time()
             self.model.zero_grad()
 
-            for batch in self.train_loader:
+            for batch in tqdm(self.train_loader, desc=f"Epoch {epoch}"):
                 self.train_step += 1
                 data, gt_label = batch
                 if torch.cuda.is_available():
@@ -167,7 +168,7 @@ class FSLTrainer(Trainer):
                 support = data[:args.way * args.shot]
                 query = data[args.way * args.shot:]
 
-                if self.args.model_class == INVARIANT_MAML:
+                if self.args.model_class in [INVARIANT_MAML, INVARIANT_MAML_MULTIPLE_HEAD, INVARIANT_MAML_ATTN]:
                     best_acc = 0.0
                     best_permutation = None
                     best_model_loss = None
@@ -185,43 +186,25 @@ class FSLTrainer(Trainer):
                             best_model_loss = model_loss
 
                     label = self.prepare_label(best_permutation)
-                    
-                    ranker_loss, metrics = self.model.train_ranker(support, best_permutation, args)
+                    if self.args.model_class in [INVARIANT_MAML, INVARIANT_MAML_ATTN]:
+                        ranker_loss, metrics = self.model.train_ranker(support, best_permutation, args)
+                    elif self.args.model_class == INVARIANT_MAML_MULTIPLE_HEAD:
+                        ranker_loss, metrics = self.model.train_ranker_heads(support, best_permutation, args)
+
 
                     averagers["tra"].add(metrics["permutation"])
                     for i in range(args.way):
-                        averagers["tra_pos_list"][i].add(metrics[f"permutation_pos{i}"])
+                        if args.model_class ==INVARIANT_MAML:
+                            averagers["tra_pos_list"][i].add(metrics[f"permutation_pos{i}"])
 
-                    averagers["trl"].add(ranker_loss.item())
+                        elif args.model_class == INVARIANT_MAML_MULTIPLE_HEAD:
+                            averagers["trl_list"][i].add(metrics[f"ranker_loss{i}"])
+                            averagers["tra_list"][i].add(metrics[f"ranker_accuracy{i}"])
+
+                    if args.model_class  in [INVARIANT_MAML, INVARIANT_MAML_ATTN]:
+                        averagers["trl"].add(ranker_loss.item())
 
                     loss = best_model_loss + ranker_loss
-                elif self.args.model_class == INVARIANT_MAML_MULTIPLE_HEAD:
-                    best_acc = 0.0
-                    best_permutation = None
-                    best_model_loss = None
-                    for permutation in self.model.permutation_to_idx.keys():
-                        logits = self.model(support, query, permutation)
-                        
-                        # map labels using found permutation
-                        label = self.prepare_label(permutation)
-
-                        model_loss = F.cross_entropy(logits, label)
-
-                        acc = count_acc(logits, label)
-                        if best_permutation is None or acc > best_acc:
-                            best_permutation = permutation
-                            best_model_loss = model_loss
-
-                    label = self.prepare_label(best_permutation)
-                    
-                    ranker_heads_loss, metrics = self.model.train_ranker_heads(support, best_permutation, args)
-
-                    averagers["tra"].add(metrics["permutation"])
-                    for i in range(args.way):
-                        averagers["trl_list"][i].add(metrics[f"ranker_loss{i}"])
-                        averagers["tra_list"][i].add(metrics[f"ranker_accuracy{i}"])
-                        
-                    loss = best_model_loss + ranker_heads_loss
                 else:
                     logits = self.model(support, query)
                     loss = F.cross_entropy(logits, label)
@@ -289,18 +272,11 @@ class FSLTrainer(Trainer):
             support = data[:args.eval_way * args.eval_shot]
             query = data[args.eval_way * args.eval_shot:]
 
-            if self.args.model_class == INVARIANT_MAML:
+            if self.args.model_class in [INVARIANT_MAML, INVARIANT_MAML_MULTIPLE_HEAD, INVARIANT_MAML_ATTN]:
                 logits, labels_permutation = self.model.forward_eval(support, query, args)
                 # map labels using found permutation
                 label = self.prepare_label(labels_permutation)
 
-                loss = F.cross_entropy(logits, label)
-            elif self.args.model_class == INVARIANT_MAML_MULTIPLE_HEAD:
-                logits, labels_permutation = self.model.forward_eval(support, query, args)
-                
-                # map labels using found permutation
-                label = self.prepare_label(labels_permutation)
-                
                 loss = F.cross_entropy(logits, label)
             else:
                 logits = self.model.forward_eval(support, query)

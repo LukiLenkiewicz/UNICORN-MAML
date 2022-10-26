@@ -142,6 +142,9 @@ def prepare_model(args):
     elif args.model_class == "InvariantMAMLMultipleHead":
         from model.models.invariantmamlmultiplehead import InvariantMAMLMultipleHead
         model = InvariantMAMLMultipleHead(args)
+    elif args.model_class == "InvariantMAMLAttn":
+        from model.models.invariantmaml_attention import InvariantMAMLAttention
+        model = InvariantMAMLAttention(args)
     else:
         raise ValueError('No Such Model')
     
