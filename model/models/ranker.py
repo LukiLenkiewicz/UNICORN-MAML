@@ -12,7 +12,7 @@ class Ranker(nn.Module):
         self.width = args.ranker_width
         self.out_neurons = out_neurons
         
-        if args.feed_heads_with_support_embeddings:
+        if args.feed_heads_with_support_embeddings or args.model_class == "InvariantMAML":
             self.in_neurons = (self.hdim + 2 * args.way) * args.way
         else:
             self.in_neurons = (self.hdim + 2 * args.way)
