@@ -73,6 +73,7 @@ class Trainer(object, metaclass=abc.ABCMeta):
             log_info += ', loss={:.4f} acc={:.4f}, lr={:.4g}'.format(averagers["tl2"].item(), averagers["ta"].item(), self.optimizer.param_groups[0]['lr'])
             print(log_info)
 
+            self.logger.add_scalar('lr', self.optimizer.param_groups[0]['lr'], self.train_step)
             self.logger.add_scalar('train_total_loss', averagers["tl1"].item(), self.train_step)
             self.logger.add_scalar('train_loss', averagers["tl2"].item(), self.train_step)
             self.logger.add_scalar('train_acc',  averagers["ta"].item(), self.train_step)

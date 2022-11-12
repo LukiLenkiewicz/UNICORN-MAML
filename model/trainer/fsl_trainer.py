@@ -360,12 +360,18 @@ class FSLTrainer(Trainer):
             query = data[args.eval_way * args.eval_shot:]
             
             if self.args.model_class == INVARIANT_MAML:
-                logits, pred_perm_ranking_scores, labels_permutation = self.model.forward_eval(support, query)
+                logits, labels_permutation = self.model.forward_eval(support, query, args)
                 # map labels using found permutation
                 label = self.prepare_label(labels_permutation)
 
-                ranker_loss = F.cross_entropy(pred_perm_ranking_scores, torch.tensor([self.model.permutation_to_idx[labels_permutation]]).cuda())
-                loss = F.cross_entropy(logits, label) + ranker_loss
+                loss = F.cross_entropy(logits, label)
+            elif self.args.model_class == INVARIANT_MAML_MULTIPLE_HEAD:
+                logits, labels_permutation = self.model.forward_eval(support, query, args)
+                
+                # map labels using found permutation
+                label = self.prepare_label(labels_permutation)
+                
+                loss = F.cross_entropy(logits, label)
             else:
                 logits = self.model.forward_eval(support, query)
                 loss = F.cross_entropy(logits, label)
@@ -443,21 +449,26 @@ class FSLTrainer(Trainer):
                     query = data[args.eval_way * shot:]
                     
                     if self.args.model_class == INVARIANT_MAML:
-                        logits, pred_perm_ranking_scores, labels_permutation = self.model.forward_eval(support, query)
+                        logits, labels_permutation = self.model.forward_eval(support, query, args)
                         # map labels using found permutation
                         label = self.prepare_label(labels_permutation)
 
-                        ranker_loss = F.cross_entropy(pred_perm_ranking_scores, torch.tensor([self.model.permutation_to_idx[labels_permutation]]).cuda())
-                        loss = F.cross_entropy(logits, label) + ranker_loss
+                        loss = F.cross_entropy(logits, label)
+                    elif self.args.model_class == INVARIANT_MAML_MULTIPLE_HEAD:
+                        logits, labels_permutation = self.model.forward_eval(support, query, args)
+                        
+                        # map labels using found permutation
+                        label = self.prepare_label(labels_permutation)
+                        
+                        loss = F.cross_entropy(logits, label)
                     else:
-                        logits = self.model.forward_eval(support, query)
+                        logits = self.model.forward_eval(support, query)    
                         loss = F.cross_entropy(logits, label)
                     
                     for e in self.running_dict:
                         self.running_dict[e]['mean'] = deepcopy(self.running_dict[e]['mean_copy'])
                         self.running_dict[e]['var'] = deepcopy(self.running_dict[e]['mean_copy'])
 
-                    loss = F.cross_entropy(logits, label)
                     acc = count_acc(logits, label)
                     record[i-1, s_index] = acc
                     del data, support, query, logits, loss
