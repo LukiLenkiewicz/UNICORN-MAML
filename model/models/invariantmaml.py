@@ -18,8 +18,11 @@ def update_params(loss, params, step_size=0.5, first_order=True):
 
     return updated_params
 
-def get_enhanced_embeddings(model, support_data, args):
-    label = torch.arange(args.way).repeat(args.shot)
+def get_enhanced_embeddings(model, support_data, args, permutation=None):
+    if permutation is None:
+        label = torch.arange(args.way).repeat(args.shot)
+    else:
+        label = torch.tensor(permutation).repeat(args.shot)
 
     onehot = torch.zeros(len(support_data), args.way)
     onehot[torch.arange(len(support_data)), label] = 1
@@ -143,15 +146,18 @@ class InvariantMAML(nn.Module):
                 logitis_query_list.append(logitis_query)
         return logitis_query_list # logitis_shot,     
 
-    def forward_eval(self, data_shot, data_query, args):
+    def forward_eval(self, data_shot, data_query, args, permutation=None):
         # update with gradient descent
         self.train()
-        avg_enhanced_embeddings = get_enhanced_embeddings(self.encoder, data_shot, args)
+        avg_enhanced_embeddings = get_enhanced_embeddings(self.encoder, data_shot, args, permutation)
         
         scores = self.ranker(avg_enhanced_embeddings.view(1, -1)).flatten()
         
-        predicted_permutation_idx = scores.argmax(dim=0).item()
-        predicted_permutation = self.idx_to_permutation[predicted_permutation_idx]
+        if permutation is None:
+            predicted_permutation_idx = scores.argmax(dim=0).item()
+            predicted_permutation = self.idx_to_permutation[predicted_permutation_idx]
+        else:
+            predicted_permutation = permutation
         
         updated_params = inner_train_step(model=self.encoder,
                                           support_data=data_shot,

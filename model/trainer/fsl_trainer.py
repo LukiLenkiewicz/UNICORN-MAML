@@ -145,9 +145,11 @@ class FSLTrainer(Trainer):
             if self.args.model_class == INVARIANT_MAML:
                 averagers["trl"] = Averager()
                 averagers["tra"] = Averager()
+                averagers["tba"] = Averager()
                 averagers["tra_pos_list"] = [Averager() for _ in range(args.way)]
             if self.args.model_class == INVARIANT_MAML_MULTIPLE_HEAD:
                 averagers["tra"] = Averager()
+                averagers["tba"] = Averager()
                 averagers["trl_list"] = [Averager() for _ in range(args.way)]
                 averagers["tra_list"] = [Averager() for _ in range(args.way)]
 
@@ -183,11 +185,13 @@ class FSLTrainer(Trainer):
                         if best_permutation is None or acc > best_acc:
                             best_permutation = permutation
                             best_model_loss = model_loss
+                            best_acc = acc
 
                     label = self.prepare_label(best_permutation)
                     
                     ranker_loss, metrics = self.model.train_ranker(support, best_permutation, args)
-
+                    
+                    averagers["tba"].add(best_acc)
                     averagers["tra"].add(metrics["permutation"])
                     for i in range(args.way):
                         averagers["tra_pos_list"][i].add(metrics[f"permutation_pos{i}"])
@@ -211,11 +215,13 @@ class FSLTrainer(Trainer):
                         if best_permutation is None or acc > best_acc:
                             best_permutation = permutation
                             best_model_loss = model_loss
+                            best_acc = acc
 
                     label = self.prepare_label(best_permutation)
                     
                     ranker_heads_loss, metrics = self.model.train_ranker_heads(support, best_permutation, args)
 
+                    averagers["tba"].add(best_acc)
                     averagers["tra"].add(metrics["permutation"])
                     for i in range(args.way):
                         averagers["trl_list"][i].add(metrics[f"ranker_loss{i}"])
@@ -280,6 +286,14 @@ class FSLTrainer(Trainer):
                 self.trlog['max_acc_epoch'],
                 self.trlog['max_acc'],
                 self.trlog['max_acc_interval']))
+
+        averagers = defaultdict(lambda: None)
+        
+        if self.args.model_class == INVARIANT_MAML:
+            averagers["vra"] = Averager()
+            averagers["vba"] = Averager()
+            averagers["vra_pos_list"] = [Averager() for _ in range(args.way)]
+
         for i, batch in enumerate(data_loader, 1):
             if torch.cuda.is_available():
                 data = batch[0].cuda()
@@ -295,6 +309,29 @@ class FSLTrainer(Trainer):
                 label = self.prepare_label(labels_permutation)
 
                 loss = F.cross_entropy(logits, label)
+            
+                best_acc = 0.0
+                best_permutation = None
+                best_model_loss = None
+                for permutation in self.model.permutation_to_idx.keys():
+                    logits, _ = self.model.forward_eval(support, query, args, permutation)
+                    
+                    # map labels using found permutation
+                    label = self.prepare_label(permutation)
+
+                    model_loss = F.cross_entropy(logits, label)
+
+                    acc = count_acc(logits, label)
+                    if best_permutation is None or acc > best_acc:
+                        best_permutation = permutation
+                        best_model_loss = model_loss
+                        best_acc = acc
+
+                averagers["vba"].add(best_acc)
+                averagers["vra"].add(1 if labels_permutation == best_permutation else 0)
+                for j in range(args.way):
+                    averagers["vra_pos_list"][j].add(1 if labels_permutation[j] == best_permutation[j] else 0)
+
             elif self.args.model_class == INVARIANT_MAML_MULTIPLE_HEAD:
                 logits, labels_permutation = self.model.forward_eval(support, query, args)
                 
@@ -327,7 +364,7 @@ class FSLTrainer(Trainer):
             self.model.encoder_repo.eval()
 
         args.way, args.shot, args.query = args.old_way, args.old_shot, args.old_query
-        return vl, va, vap
+        return vl, va, vap, averagers
 
     def evaluate_test(self):
         # restore model args
