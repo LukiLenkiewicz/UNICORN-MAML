@@ -289,7 +289,7 @@ class FSLTrainer(Trainer):
 
         averagers = defaultdict(lambda: None)
         
-        if self.args.model_class == INVARIANT_MAML:
+        if self.args.model_class == INVARIANT_MAML and eval_ranker:
             averagers["vra"] = Averager()
             averagers["vba"] = Averager()
             averagers["vra_pos_list"] = [Averager() for _ in range(args.way)]
