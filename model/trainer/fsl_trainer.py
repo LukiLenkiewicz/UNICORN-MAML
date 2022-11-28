@@ -145,11 +145,9 @@ class FSLTrainer(Trainer):
             if self.args.model_class == INVARIANT_MAML:
                 averagers["trl"] = Averager()
                 averagers["tra"] = Averager()
-                averagers["tba"] = Averager()
                 averagers["tra_pos_list"] = [Averager() for _ in range(args.way)]
             if self.args.model_class == INVARIANT_MAML_MULTIPLE_HEAD:
                 averagers["tra"] = Averager()
-                averagers["tba"] = Averager()
                 averagers["trl_list"] = [Averager() for _ in range(args.way)]
                 averagers["tra_list"] = [Averager() for _ in range(args.way)]
 
@@ -173,6 +171,7 @@ class FSLTrainer(Trainer):
                     best_acc = 0.0
                     best_permutation = None
                     best_model_loss = None
+                    best_logits = None
                     for permutation in self.model.permutation_to_idx.keys():
                         logits = self.model(support, query, permutation)
                         
@@ -186,23 +185,25 @@ class FSLTrainer(Trainer):
                             best_permutation = permutation
                             best_model_loss = model_loss
                             best_acc = acc
+                            best_logits = logits.clone()
 
                     label = self.prepare_label(best_permutation)
                     
                     ranker_loss, metrics = self.model.train_ranker(support, best_permutation, args)
                     
-                    averagers["tba"].add(best_acc)
                     averagers["tra"].add(metrics["permutation"])
                     for i in range(args.way):
                         averagers["tra_pos_list"][i].add(metrics[f"permutation_pos{i}"])
 
                     averagers["trl"].add(ranker_loss.item())
 
+                    logits = best_logits
                     loss = best_model_loss + ranker_loss
                 elif self.args.model_class == INVARIANT_MAML_MULTIPLE_HEAD:
                     best_acc = 0.0
                     best_permutation = None
                     best_model_loss = None
+                    best_logits = None
                     for permutation in self.model.permutation_to_idx.keys():
                         logits = self.model(support, query, permutation)
                         
@@ -216,17 +217,18 @@ class FSLTrainer(Trainer):
                             best_permutation = permutation
                             best_model_loss = model_loss
                             best_acc = acc
+                            best_logits = logits.clone()
 
                     label = self.prepare_label(best_permutation)
                     
                     ranker_heads_loss, metrics = self.model.train_ranker_heads(support, best_permutation, args)
 
-                    averagers["tba"].add(best_acc)
                     averagers["tra"].add(metrics["permutation"])
                     for i in range(args.way):
                         averagers["trl_list"][i].add(metrics[f"ranker_loss{i}"])
                         averagers["tra_list"][i].add(metrics[f"ranker_accuracy{i}"])
                         
+                    logits = best_logits
                     loss = best_model_loss + ranker_heads_loss
                 else:
                     logits = self.model(support, query)

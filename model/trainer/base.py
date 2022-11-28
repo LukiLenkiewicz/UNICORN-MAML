@@ -92,8 +92,6 @@ class Trainer(object, metaclass=abc.ABCMeta):
                 self.logger.add_scalar('train_ranker_loss', averagers["trl"].item(), self.train_step)
             if averagers["tra"] is not None:
                 self.logger.add_scalar('train_ranker_acc', averagers["tra"].item(), self.train_step)
-            if averagers["tba"] is not None:
-                self.logger.add_scalar('train_best_acc', averagers["tba"].item(), self.train_step)
             if averagers["tra_pos_list"] is not None and type(averagers["tra_pos_list"]) is list:
                 for i in range(len(averagers["tra_pos_list"])):
                     self.logger.add_scalar(f'train_ranker_acc_pos{i}', averagers["tra_pos_list"][i].item(), self.train_step)
