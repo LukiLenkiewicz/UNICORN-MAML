@@ -154,7 +154,8 @@ class FSLTrainer(Trainer):
             start_tm = time.time()
             self.model.zero_grad()
 
-            for batch in self.train_loader:
+            for bi, batch in tqdm(enumerate(self.train_loader)):
+
                 self.train_step += 1
                 data, gt_label = batch
                 if torch.cuda.is_available():
@@ -213,14 +214,17 @@ class FSLTrainer(Trainer):
                         model_loss = F.cross_entropy(logits, label)
 
                         acc = count_acc(logits, label)
+                        # print(permutation, acc)
                         if best_permutation is None or acc > best_acc:
+                            # print("BEST PERM!")
                             best_permutation = permutation
                             best_model_loss = model_loss
                             best_acc = acc
                             best_logits = logits.clone()
 
+                    # print("chosen", best_permutation)
                     label = self.prepare_label(best_permutation)
-                    
+
                     ranker_heads_loss, metrics = self.model.train_ranker_heads(support, best_permutation, args)
 
                     averagers["tra"].add(metrics["permutation"])
@@ -337,10 +341,11 @@ class FSLTrainer(Trainer):
 
             elif self.args.model_class == INVARIANT_MAML_MULTIPLE_HEAD:
                 logits, labels_permutation = self.model.forward_eval(support, query, args)
-                
+                assert len(set(labels_permutation)) == len(labels_permutation), labels_permutation
+
                 # map labels using found permutation
                 label = self.prepare_label(labels_permutation)
-                
+
                 loss = F.cross_entropy(logits, label)
             else:
                 logits = self.model.forward_eval(support, query)
@@ -407,7 +412,8 @@ class FSLTrainer(Trainer):
                 loss = F.cross_entropy(logits, label)
             elif self.args.model_class == INVARIANT_MAML_MULTIPLE_HEAD:
                 logits, labels_permutation = self.model.forward_eval(support, query, args)
-                
+                assert len(set(labels_permutation)) == len(labels_permutation), labels_permutation
+
                 # map labels using found permutation
                 label = self.prepare_label(labels_permutation)
                 

@@ -8,9 +8,7 @@ import itertools
 from collections import OrderedDict
 from model.utils import count_acc
 from operator import itemgetter
-from model.models.ranker import Ranker
-from lapsolver import solve_dense as lap_solve_dense
-
+# from model.models.ranker import Ranker
 
 def update_params(loss, params, step_size=0.5, first_order=True):
     name_list, tensor_list = zip(*params.items())
@@ -56,6 +54,26 @@ def inner_train_step(model, support_data, args, permutation):
         loss = F.cross_entropy(ypred, label)
         updated_params = update_params(loss, updated_params, step_size=args.gd_lr, first_order=True)
     return updated_params
+
+
+class AttnRanker(nn.Module):
+    def __init__(self, in_dim: int, n_layers: int, hidden_dim: int):
+
+        super().__init__()
+
+        assert n_layers >= 1
+        embed_layers = [nn.Linear(in_dim, hidden_dim)]
+        weight_layers = [nn.Linear(in_dim, hidden_dim)]
+        for _ in range(n_layers - 1):
+            embed_layers.extend([nn.ReLU(), nn.Linear(hidden_dim, hidden_dim)])
+            weight_layers.extend([nn.ReLU(), nn.Linear(hidden_dim, hidden_dim)])
+
+
+
+
+
+
+
 
 class InvariantMAMLMultipleHead(nn.Module):
 
@@ -175,10 +193,8 @@ class InvariantMAMLMultipleHead(nn.Module):
             else:
                 head_scores = self.ranker_heads[i](avg_enhanced_embeddings[i].view(1, -1)).flatten()
                 scores[i] = head_scores
-
-        _, predicted_permutation = lap_solve_dense(-scores.detach().cpu().numpy())
-        predicted_permutation = tuple(predicted_permutation.tolist())
-
+        
+        predicted_permutation = tuple(scores.max(dim=1).indices)
         
         updated_params = inner_train_step(model=self.encoder,
                                           support_data=data_shot,
