@@ -22,6 +22,7 @@ from tqdm import tqdm
 
 INVARIANT_MAML = "InvariantMAML"
 INVARIANT_MAML_MULTIPLE_HEAD = "InvariantMAMLMultipleHead"
+INVARIANT_MAML_SVD = "InvariantMAMLSVD"
 
 class FSLTrainer(Trainer):
     def __init__(self, args):
@@ -214,17 +215,14 @@ class FSLTrainer(Trainer):
                         model_loss = F.cross_entropy(logits, label)
 
                         acc = count_acc(logits, label)
-                        # print(permutation, acc)
                         if best_permutation is None or acc > best_acc:
-                            # print("BEST PERM!")
                             best_permutation = permutation
                             best_model_loss = model_loss
                             best_acc = acc
                             best_logits = logits.clone()
 
-                    # print("chosen", best_permutation)
                     label = self.prepare_label(best_permutation)
-
+                    
                     ranker_heads_loss, metrics = self.model.train_ranker_heads(support, best_permutation, args)
 
                     averagers["tra"].add(metrics["permutation"])
@@ -234,6 +232,38 @@ class FSLTrainer(Trainer):
                         
                     logits = best_logits
                     loss = best_model_loss + ranker_heads_loss
+                elif self.args.model_class == INVARIANT_MAML_SVD:
+                    best_acc = 0.0
+                    best_permutation = None
+                    best_model_loss = None
+                    best_logits = None
+                    for permutation in self.model.permutation_to_idx.keys():
+                        logits = self.model(support, query, permutation)
+                        
+                        # map labels using found permutation
+                        label = self.prepare_label(permutation)
+
+                        model_loss = F.cross_entropy(logits, label)
+
+                        acc = count_acc(logits, label)
+                        if best_permutation is None or acc > best_acc:
+                            best_permutation = permutation
+                            best_model_loss = model_loss
+                            best_acc = acc
+                            best_logits = logits.clone()
+
+                    label = self.prepare_label(best_permutation)
+                    
+                    ranker_loss, metrics = self.model.train_ranker(support, best_permutation, args)
+                    
+                    averagers["tra"].add(metrics["permutation"])
+                    for i in range(args.way):
+                        averagers["tra_pos_list"][i].add(metrics[f"permutation_pos{i}"])
+
+                    averagers["trl"].add(ranker_loss.item())
+
+                    logits = best_logits
+                    loss = best_model_loss + ranker_loss
                 else:
                     logits = self.model(support, query)
                     loss = F.cross_entropy(logits, label)
@@ -347,6 +377,8 @@ class FSLTrainer(Trainer):
                 label = self.prepare_label(labels_permutation)
 
                 loss = F.cross_entropy(logits, label)
+            elif self.args.model_class == INVARIANT_MAML_MSE:
+                raise NotImplementedError(f'{INVARIANT_MAML_MSE} not implemented for this specific use case')
             else:
                 logits = self.model.forward_eval(support, query)
                 loss = F.cross_entropy(logits, label)
@@ -418,6 +450,8 @@ class FSLTrainer(Trainer):
                 label = self.prepare_label(labels_permutation)
                 
                 loss = F.cross_entropy(logits, label)
+            elif self.args.model_class == INVARIANT_MAML_MSE:
+                raise NotImplementedError(f'{INVARIANT_MAML_MSE} not implemented for this specific use case')
             else:
                 logits = self.model.forward_eval(support, query)
                 loss = F.cross_entropy(logits, label)
@@ -507,6 +541,8 @@ class FSLTrainer(Trainer):
                         label = self.prepare_label(labels_permutation)
                         
                         loss = F.cross_entropy(logits, label)
+                    elif self.args.model_class == INVARIANT_MAML_MSE:
+                        raise NotImplementedError(f'{INVARIANT_MAML_MSE} not implemented for this specific use case')
                     else:
                         logits = self.model.forward_eval(support, query)    
                         loss = F.cross_entropy(logits, label)
