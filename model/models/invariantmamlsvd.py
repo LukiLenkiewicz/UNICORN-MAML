@@ -8,6 +8,7 @@ from collections import OrderedDict
 from model.utils import count_acc
 from operator import itemgetter
 from model.models.ranker import Ranker
+from lapsolver import solve_dense as lap_solve_dense
 
 def update_params(loss, params, step_size=0.5, first_order=True):
     name_list, tensor_list = zip(*params.items())
@@ -75,7 +76,7 @@ class InvariantMAMLSVD(nn.Module):
         self.hdim = hdim
         self.encoder.fc = nn.Linear(hdim, args.way)
         
-        self.ranker = Ranker(args, hdim, args.way, last_activation_fn=None)
+        self.ranker = Ranker(args, hdim, out_neurons=args.way, last_activation_fn=None)
 
         self.permutation_to_idx = OrderedDict()
         self.idx_to_permutation = OrderedDict()
@@ -98,9 +99,8 @@ class InvariantMAMLSVD(nn.Module):
         avg_enhanced_embeddings = get_enhanced_embeddings(self.encoder, support_data, args)
 
         logits = self.ranker(avg_enhanced_embeddings)
-        (U, S, Vh) = torch.linalg.svd(logits)
-
-        ones = torch.eye(self.way, dtype=torch.float32)
+        (U, S, Vh) = torch.linalg.svd(logits, full_matrices=False)
+        ones = torch.eye(S.shape[0], dtype=torch.float32).cuda()
         M = torch.matmul(torch.matmul(U, ones), Vh)
         probs = F.softmax(torch.matmul(M, logits), dim=1)
         
@@ -111,7 +111,7 @@ class InvariantMAMLSVD(nn.Module):
         for i in range(args.way):
             metrics[f"permutation_pos{i}"] = 1 if predicted_permutation[i].item() == best_permutation[i] else 0
 
-        expected = torch.tensor(best_permutation_idx).cuda()
+        expected = torch.tensor(self.idx_to_permutation[best_permutation_idx]).cuda()
         return F.cross_entropy(probs, expected), metrics
 
     def forward_eval_perm(self, data_shot, data_query):
@@ -121,4 +121,25 @@ class InvariantMAMLSVD(nn.Module):
         raise NotImplementedError("InvariantMAMLIsometric - method forward_eval_ensemble not implemented!")
 
     def forward_eval(self, data_shot, data_query, args, permutation=None):
-        raise NotImplementedError("InvariantMAMLIsometric - method forward_eval not implemented!")
+        # update with gradient descent
+        self.train()
+        avg_enhanced_embeddings = get_enhanced_embeddings(self.encoder, data_shot, args, permutation)
+        
+        scores = self.ranker(avg_enhanced_embeddings)
+        
+        if permutation is None:
+            _, predicted_permutation = lap_solve_dense(-scores.detach().cpu().numpy())
+        else:
+            predicted_permutation = permutation
+        
+        updated_params = inner_train_step(model=self.encoder,
+                                          support_data=data_shot,
+                                          args=self.args,
+                                          permutation=predicted_permutation)
+
+        # get shot accuracy and loss
+        self.eval()
+        with torch.no_grad():
+            logitis_query = self.encoder(data_query, updated_params) / self.args.temperature
+
+        return logitis_query, predicted_permutation

@@ -151,12 +151,15 @@ class FSLTrainer(Trainer):
                 averagers["tra"] = Averager()
                 averagers["trl_list"] = [Averager() for _ in range(args.way)]
                 averagers["tra_list"] = [Averager() for _ in range(args.way)]
+            if self.args.model_class == INVARIANT_MAML_SVD:
+                averagers["trl"] = Averager()
+                averagers["tra"] = Averager()
+                averagers["tra_pos_list"] = [Averager() for _ in range(args.way)]
 
             start_tm = time.time()
             self.model.zero_grad()
 
             for bi, batch in tqdm(enumerate(self.train_loader)):
-
                 self.train_step += 1
                 data, gt_label = batch
                 if torch.cuda.is_available():
@@ -329,6 +332,10 @@ class FSLTrainer(Trainer):
             averagers["vra"] = Averager()
             averagers["vba"] = Averager()
             averagers["vra_pos_list"] = [Averager() for _ in range(args.way)]
+        if self.args.model_class == INVARIANT_MAML_SVD and eval_ranker:
+            averagers["vra"] = Averager()
+            averagers["vba"] = Averager()
+            averagers["vra_pos_list"] = [Averager() for _ in range(args.way)]
 
         for i, batch in enumerate(data_loader, 1):
             if torch.cuda.is_available():
@@ -377,8 +384,35 @@ class FSLTrainer(Trainer):
                 label = self.prepare_label(labels_permutation)
 
                 loss = F.cross_entropy(logits, label)
-            elif self.args.model_class == INVARIANT_MAML_MSE:
-                raise NotImplementedError(f'{INVARIANT_MAML_MSE} not implemented for this specific use case')
+            elif self.args.model_class == INVARIANT_MAML_SVD:
+                logits, labels_permutation = self.model.forward_eval(support, query, args)
+                # map labels using found permutation
+                label = self.prepare_label(labels_permutation)
+
+                loss = F.cross_entropy(logits, label)
+            
+                if eval_ranker:
+                    best_acc = 0.0
+                    best_permutation = None
+                    best_model_loss = None
+                    for permutation in self.model.permutation_to_idx.keys():
+                        logits, _ = self.model.forward_eval(support, query, args, permutation)
+                        
+                        # map labels using found permutation
+                        permuted_labels = self.prepare_label(permutation)
+
+                        model_loss = F.cross_entropy(logits, permuted_labels)
+
+                        permutation_acc = count_acc(logits, permuted_labels)
+                        if best_permutation is None or permutation_acc > best_acc:
+                            best_permutation = permutation
+                            best_model_loss = model_loss
+                            best_acc = permutation_acc
+
+                    averagers["vba"].add(best_acc)
+                    averagers["vra"].add(1 if labels_permutation == best_permutation else 0)
+                    for j in range(args.way):
+                        averagers["vra_pos_list"][j].add(1 if labels_permutation[j] == best_permutation[j] else 0)
             else:
                 logits = self.model.forward_eval(support, query)
                 loss = F.cross_entropy(logits, label)
@@ -450,8 +484,12 @@ class FSLTrainer(Trainer):
                 label = self.prepare_label(labels_permutation)
                 
                 loss = F.cross_entropy(logits, label)
-            elif self.args.model_class == INVARIANT_MAML_MSE:
-                raise NotImplementedError(f'{INVARIANT_MAML_MSE} not implemented for this specific use case')
+            elif self.args.model_class == INVARIANT_MAML_SVD:
+                logits, labels_permutation = self.model.forward_eval(support, query, args)
+                # map labels using found permutation
+                label = self.prepare_label(labels_permutation)
+
+                loss = F.cross_entropy(logits, label)
             else:
                 logits = self.model.forward_eval(support, query)
                 loss = F.cross_entropy(logits, label)
@@ -541,8 +579,12 @@ class FSLTrainer(Trainer):
                         label = self.prepare_label(labels_permutation)
                         
                         loss = F.cross_entropy(logits, label)
-                    elif self.args.model_class == INVARIANT_MAML_MSE:
-                        raise NotImplementedError(f'{INVARIANT_MAML_MSE} not implemented for this specific use case')
+                    elif self.args.model_class == INVARIANT_MAML_SVD:
+                        logits, labels_permutation = self.model.forward_eval(support, query, args)
+                        # map labels using found permutation
+                        label = self.prepare_label(labels_permutation)
+
+                        loss = F.cross_entropy(logits, label)
                     else:
                         logits = self.model.forward_eval(support, query)    
                         loss = F.cross_entropy(logits, label)

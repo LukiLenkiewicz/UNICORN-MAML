@@ -32,8 +32,10 @@ class Ranker(nn.Module):
             layers.append(nn.ReLU())
         elif last_activation_fn == 'sigmoid':
             layers.append(nn.Sigmoid())
+        elif last_activation_fn is None:
+            pass
         else:
-            layers.append(nn.Sigmoid())
+            raise ValueError('No Such Activation!')
 
         self.layers = nn.Sequential(*layers)
 
