@@ -157,6 +157,8 @@ def postprocess_args(args):
         save_path2 += '-FBN'
     if args.model_class == 'MAMLNoise':
         save_path2 += '-{}R{}'.format(args.noise_type, args.noise_ratio)
+    if args.train_ranker_only:
+        save_path2 += f'-RankerOnly'
 
     if args.suffix != "":
         save_path2 += f"_{args.suffix}"
@@ -220,6 +222,7 @@ def get_command_line_parser():
     parser.add_argument('--ranker_width', type=int, default=256, help='The width of ranker')
     parser.add_argument('--draw_permutation_train_ratio', type=float, default=-1.0, help='Ratio indicating the number of randomly chosen permutations being considered during training out of the total number of permutations')
     parser.add_argument('--feed_heads_with_support_embeddings', action='store_true', help='Whether to pass the whole set of support embeddings on the input to every single ranker head. Only applicable to InvariantMAMLMultipleHead model.')
+    parser.add_argument('--train_ranker_only', action='store_true', help='Whether to perform only ranker training.')
 
     # usually untouched parameters
     parser.add_argument('--mom', type=float, default=0.9)
@@ -231,6 +234,7 @@ def get_command_line_parser():
     parser.add_argument('--suffix', type=str, default="")
     parser.add_argument("--optimizer_class", type=str, default="sgd", choices=["sgd", "adam"])
 
+    # HyperMAML related parameters
     parser.add_argument("--hm_freeze_backbone", action="store_true", default=False)
     parser.add_argument("--hm_hn_len", type=int, default=3)
     parser.add_argument("--hm_hn_width", type=int, default=256)

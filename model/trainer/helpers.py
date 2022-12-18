@@ -183,9 +183,11 @@ def prepare_model(args):
 
     return model
 
-def prepare_optimizer(model, args):
+def resolve_parameters(model, args):
+    if args.model_class == "InvariantMAML" and args.train_ranker_only:
+        lr = args.lr * args.lr_mul if args.lr_mul > 1 else args.lr
+        return [{'params': model.ranker.parameters(), 'lr': lr}]
 
-    # select parameters
     if args.lr_mul > 1:
         top_para = [v for k,v in model.named_parameters() if 'encoder' not in k]
 
@@ -196,12 +198,15 @@ def prepare_optimizer(model, args):
             from model.models.hypermaml import HyperMAML
 
             assert isinstance(model, HyperMAML)
-            params = list(model.hn.parameters()) + list(model.encoder.fc.parameters())
-
-
-
+            return list(model.hn.parameters()) + list(model.encoder.fc.parameters())
+        return params
     else:
-        params =model.parameters()
+        return model.parameters()
+
+def prepare_optimizer(model, args):
+
+    # select parameters
+    params = resolve_parameters(model, args)
 
     # select optimizer
     if args.optimizer_class == "sgd":
