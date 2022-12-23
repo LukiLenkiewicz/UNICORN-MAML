@@ -159,6 +159,8 @@ def postprocess_args(args):
         save_path2 += '-{}R{}'.format(args.noise_type, args.noise_ratio)
     if args.train_ranker_only:
         save_path2 += f'-RankerOnly'
+    if args.ranker_input_pooling:
+        save_path2 += f'-{args.ranker_input_pooling}RankerPool'
 
     if args.suffix != "":
         save_path2 += f"_{args.suffix}"
@@ -223,6 +225,7 @@ def get_command_line_parser():
     parser.add_argument('--draw_permutation_train_ratio', type=float, default=-1.0, help='Ratio indicating the number of randomly chosen permutations being considered during training out of the total number of permutations')
     parser.add_argument('--feed_heads_with_support_embeddings', action='store_true', help='Whether to pass the whole set of support embeddings on the input to every single ranker head. Only applicable to InvariantMAMLMultipleHead model.')
     parser.add_argument('--train_ranker_only', action='store_true', help='Whether to perform only ranker training.')
+    parser.add_argument('--ranker_input_pooling', type=str, default=None, choices=[None, 'average', 'max', 'min'], help='The pooling operation applied to input of the ranker.')
 
     # usually untouched parameters
     parser.add_argument('--mom', type=float, default=0.9)

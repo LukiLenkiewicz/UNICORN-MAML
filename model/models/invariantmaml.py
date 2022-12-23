@@ -24,12 +24,16 @@ def get_enhanced_embeddings(model, support_data, args, permutation=None):
     else:
         label = torch.tensor(permutation).repeat(args.shot)
 
-    onehot = torch.zeros(len(support_data), args.way)
-    onehot[torch.arange(len(support_data)), label] = 1
-
     params = OrderedDict(model.named_parameters())
     embeddings, logits = model(support_data, params, embedding_and_logits=True)
-    enhanced_embeddings = torch.cat([embeddings, logits, onehot.cuda()], dim=1)
+    
+    if args.ranker_input_pooling not in ['average', 'max', 'min']:
+        onehot = torch.zeros(len(support_data), args.way)
+        onehot[torch.arange(len(support_data)), label] = 1
+        
+        enhanced_embeddings = torch.cat([embeddings, logits, onehot.cuda()], dim=1)
+    else:
+        enhanced_embeddings = embeddings
 
     avg_enhanced_embeddings = []
 
@@ -39,6 +43,15 @@ def get_enhanced_embeddings(model, support_data, args, permutation=None):
         )
 
     avg_enhanced_embeddings = torch.stack(avg_enhanced_embeddings)
+    if args.ranker_input_pooling == 'average':
+        avg_enhanced_embeddings = torch.mean(avg_enhanced_embeddings, dim=0)
+    elif args.ranker_input_pooling == 'max':
+        avg_enhanced_embeddings = torch.max(avg_enhanced_embeddings, dim=0).values
+    elif args.ranker_input_pooling == 'min':
+        avg_enhanced_embeddings = torch.min(avg_enhanced_embeddings, dim=0).values
+    else:
+        avg_enhanced_embeddings = torch.stack(avg_enhanced_embeddings)
+
     return avg_enhanced_embeddings
 
 def inner_train_step(model, support_data, args, permutation):
@@ -98,9 +111,7 @@ class InvariantMAML(nn.Module):
 
     def train_ranker(self, support_data, best_permutation, args):
         avg_enhanced_embeddings = get_enhanced_embeddings(self.encoder, support_data, args)
-        
         scores = self.ranker(avg_enhanced_embeddings.view(1, -1)).flatten()
-        
         predicted_permutation_idx = scores.argmax(dim=0).item()
         best_permutation_idx = self.permutation_to_idx[best_permutation]
         
