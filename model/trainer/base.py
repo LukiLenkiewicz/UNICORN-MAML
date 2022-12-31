@@ -79,12 +79,11 @@ class Trainer(object, metaclass=abc.ABCMeta):
                 log_info += ', ranker loss={:.4f}'.format(averagers["trl"].item())
             if averagers["tra"] is not None:
                 log_info += ', ranker acc={:.4f}'.format(averagers["tra"].item())
-            log_info += ', loss={:.4f} acc={:.4f}, lr={:.4g}'.format(averagers["tl2"].item(), averagers["ta"].item(), self.optimizer.param_groups[0]['lr'])
+            log_info += ', acc={:.4f}, lr={:.4g}'.format(averagers["ta"].item(), self.optimizer.param_groups[0]['lr'])
             print(log_info)
 
             self.logger.add_scalar('lr', self.optimizer.param_groups[0]['lr'], self.train_step)
             self.logger.add_scalar('train_total_loss', averagers["tl1"].item(), self.train_step)
-            self.logger.add_scalar('train_loss', averagers["tl2"].item(), self.train_step)
             self.logger.add_scalar('train_acc',  averagers["ta"].item(), self.train_step)
             if averagers["tat"] is not None:
                 self.logger.add_scalar('train_acc_T', averagers["tat"].item(), self.train_step)

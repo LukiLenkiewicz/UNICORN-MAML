@@ -13,7 +13,7 @@ class Ranker(nn.Module):
         self.out_neurons = out_neurons
         self.ranker_input_pooling = args.ranker_input_pooling
         
-        if self.ranker_input_pooling in ['average', 'max', 'min']:
+        if self.ranker_input_pooling in ['average', 'max']:
             self.in_neurons = self.hdim
         elif args.feed_heads_with_support_embeddings or args.model_class == "InvariantMAML":
             self.in_neurons = (self.hdim + 2 * args.way) * args.way

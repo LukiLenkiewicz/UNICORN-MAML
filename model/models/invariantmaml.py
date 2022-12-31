@@ -43,12 +43,11 @@ def get_enhanced_embeddings(model, support_data, args, permutation=None):
         )
 
     avg_enhanced_embeddings = torch.stack(avg_enhanced_embeddings)
+
     if args.ranker_input_pooling == 'average':
         avg_enhanced_embeddings = torch.mean(avg_enhanced_embeddings, dim=0)
     elif args.ranker_input_pooling == 'max':
         avg_enhanced_embeddings = torch.max(avg_enhanced_embeddings, dim=0).values
-    elif args.ranker_input_pooling == 'min':
-        avg_enhanced_embeddings = torch.min(avg_enhanced_embeddings, dim=0).values
     else:
         avg_enhanced_embeddings = torch.stack(avg_enhanced_embeddings)
 

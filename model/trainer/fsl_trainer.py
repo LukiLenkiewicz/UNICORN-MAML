@@ -139,7 +139,6 @@ class FSLTrainer(Trainer):
             averagers = defaultdict(lambda: None)
             averagers.update({
                 "tl1": Averager(),
-                "tl2": Averager(),
                 "ta": Averager()
             })
             
@@ -270,8 +269,6 @@ class FSLTrainer(Trainer):
                 else:
                     logits = self.model(support, query)
                     loss = F.cross_entropy(logits, label)
-
-                averagers["tl2"].add(loss.item())
                 
                 forward_tm = time.time()
                 self.ft.add(forward_tm - data_tm)
