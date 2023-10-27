@@ -191,7 +191,7 @@ def get_command_line_parser():
     parser.add_argument('--dataset', type=str, default='MiniImageNet', 
                         choices=['MiniImageNet', 'TieredImageNet', 'CUB'])
     parser.add_argument('--model_class', type=str, default='MAML', 
-                        choices=['MAML', 'MAMLUnicorn', "HyperMAML"])
+                        choices=['MAML', 'MAMLUnicorn', "HyperMAML", "BHyperMAML"])
  
     # optimization parameters
     parser.add_argument('--lr', type=float, default=0.001)
@@ -227,5 +227,9 @@ def get_command_line_parser():
     parser.add_argument("--hm_hn_len", type=int, default=3)
     parser.add_argument("--hm_hn_width", type=int, default=256)
 
+    # BinaryHyperMAML utils
+    parser.add_argument("--bm_chunk_emb_size", type=int, default=8)
+    parser.add_argument("--bm_chunk_size", type=int, default=325)
+    # parser.add_argument("--hm_hn_width", type=int, default=256)
 
     return parser

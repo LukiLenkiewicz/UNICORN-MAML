@@ -136,10 +136,14 @@ def prepare_model(args):
     elif args.model_class == "HyperMAML":
         from model.models.hypermaml import HyperMAML
         model = HyperMAML(args)
+    elif args.model_class == "BHyperMAML":
+        from model.models.bhmaml import BinaryHyperMAML
+        model = BinaryHyperMAML(args)
     else:
         raise ValueError('No Such Model')
     
     # load pre-trained model (no FC weights)
+    args.para_init = None
     if args.para_init is not None:
         model_dict = model.state_dict()        
         pretrained_dict = torch.load(args.para_init, map_location='cpu')['params'] # map_location=torch.device('cpu')
