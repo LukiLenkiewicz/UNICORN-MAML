@@ -24,7 +24,17 @@ def get_dataloader(args):
         args.dropblock_size = 2        
     elif args.dataset == 'TieredImageNet':
         from model.dataloader.tiered_imagenet_raw import tieredImageNet as Dataset    
-        args.dropblock_size = 5        
+        args.dropblock_size = 5       
+    elif args.dataset == "cross_char":
+        from model.dataloader.mini_imagenet import MiniImageNet as TrainLoader
+        from model.dataloader.cub import CUB as ValLoader
+
+        train_loader = get_single_data_loader(TrainLoader, "train", args)
+        val_loader = get_single_data_loader(ValLoader, "val", args)
+        test_loader = get_single_data_loader(ValLoader, "test", args)
+        args.dropblock_size = 2
+        
+        return train_loader, val_loader, test_loader
     else:
         raise ValueError('Non-supported Dataset.')
 
@@ -62,6 +72,18 @@ def get_dataloader(args):
 
     return train_loader, val_loader, test_loader
 
+def get_single_data_loader(dataset, mode, args):
+    set = dataset(mode, args)
+    sampler = CategoriesSampler(set.label,
+                                     args.num_test_episodes, args.eval_way,
+                                     args.eval_shot + args.eval_query)
+    loader = DataLoader(dataset=set,
+                            batch_sampler=sampler,
+                            num_workers=args.num_workers,
+                            pin_memory=True)        
+
+    return loader 
+
 def get_cross_shot_dataloader(args, shot):
     if args.dataset == 'MiniImageNet':
         # Handle MiniImageNet
@@ -78,6 +100,9 @@ def get_cross_shot_dataloader(args, shot):
         args.dropblock_size = 2        
     elif args.dataset == 'TieredImageNet':
         from model.dataloader.tiered_imagenet_raw import tieredImageNet as Dataset    
+        args.dropblock_size = 5                
+    elif args.dataset == 'cross_char':
+        from model.dataloader.mini_imagenet import MiniImageNet as Dataset    
         args.dropblock_size = 5                
     else:
         raise ValueError('Non-supported Dataset.')
@@ -110,6 +135,9 @@ def get_class_dataloader(args):
         args.dropblock_size = 2        
     elif args.dataset == 'TieredImageNet':
         from model.dataloader.tiered_imagenet_raw import tieredImageNet as Dataset    
+        args.dropblock_size = 5                
+    elif args.dataset == 'cross_char':
+        from model.dataloader.cub import CUB as Dataset    
         args.dropblock_size = 5                
     else:
         raise ValueError('Non-supported Dataset.')
