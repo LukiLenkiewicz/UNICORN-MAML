@@ -26,8 +26,8 @@ def get_dataloader(args):
         from model.dataloader.tiered_imagenet_raw import tieredImageNet as Dataset    
         args.dropblock_size = 5       
     elif args.dataset == "cross_char":
-        from model.dataloader.mini_imagenet import MiniImageNet as TrainLoader
-        from model.dataloader.cub import CUB as ValLoader
+        from model.dataloader.omniglot import Omniglot as TrainLoader
+        from model.dataloader.emnist import Emnist as ValLoader
 
         train_loader = get_single_data_loader(TrainLoader, "train", args)
         val_loader = get_single_data_loader(ValLoader, "val", args)
@@ -73,16 +73,26 @@ def get_dataloader(args):
     return train_loader, val_loader, test_loader
 
 def get_single_data_loader(dataset, mode, args):
-    set = dataset(mode, args)
-    sampler = CategoriesSampler(set.label,
-                                     args.num_test_episodes, args.eval_way,
-                                     args.eval_shot + args.eval_query)
-    loader = DataLoader(dataset=set,
+    set_ = dataset(mode, args)
+    num_episodes, way, shot, query = get_mode_args(mode, args)
+    sampler = CategoriesSampler(set_.label,
+                                    num_episodes, way,
+                                    shot + query)
+    loader = DataLoader(dataset=set_,
                             batch_sampler=sampler,
                             num_workers=args.num_workers,
                             pin_memory=True)        
-
     return loader 
+
+def get_mode_args(mode, args):
+    if mode == "train":
+        return args.episodes_per_epoch, args.way, args.shot, args.query
+    elif mode == "val":
+        return args.num_eval_episodes, args.eval_way, args.eval_shot, args.eval_query
+    elif mode == "test":
+        return args.num_test_episodes, args.eval_way, args.eval_shot, args.eval_query
+    else:
+        return None
 
 def get_cross_shot_dataloader(args, shot):
     if args.dataset == 'MiniImageNet':
@@ -102,8 +112,11 @@ def get_cross_shot_dataloader(args, shot):
         from model.dataloader.tiered_imagenet_raw import tieredImageNet as Dataset    
         args.dropblock_size = 5                
     elif args.dataset == 'cross_char':
-        from model.dataloader.mini_imagenet import MiniImageNet as Dataset    
+        from model.dataloader.mini_imagenet import MiniImageNet as Dataset
         args.dropblock_size = 5                
+    elif args.dataset == "cross_char":
+        from model.dataloader.emnist import Emnist as Dataset
+        args.dropblock_size = 2
     else:
         raise ValueError('Non-supported Dataset.')
     
@@ -137,7 +150,7 @@ def get_class_dataloader(args):
         from model.dataloader.tiered_imagenet_raw import tieredImageNet as Dataset    
         args.dropblock_size = 5                
     elif args.dataset == 'cross_char':
-        from model.dataloader.cub import CUB as Dataset    
+        from model.dataloader.omniglot import Omniglot as Dataset    
         args.dropblock_size = 5                
     else:
         raise ValueError('Non-supported Dataset.')

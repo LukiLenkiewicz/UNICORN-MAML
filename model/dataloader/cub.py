@@ -55,7 +55,8 @@ class CUB(Dataset):
         self.num_class = len(set(self.label))
 
         image_size = 84
-        self.transform_aug, self.transform = get_transforms(image_size, args.backbone_class)
+        # self.transform_aug, self.transform = get_transforms(image_size, args.backbone_class)
+        self.transform_aug, self.transform = get_transforms(image_size, "Conv4")
         
     def parse_csv(self, txt_path):
         data = []
@@ -86,3 +87,8 @@ class CUB(Dataset):
         data, label = self.data[i], self.label[i]
         image = self.transform(Image.open(data).convert('RGB'))
         return image, label
+
+
+if __name__ == "__main__":
+    ds = CUB("train", None)
+    print(ds.label)

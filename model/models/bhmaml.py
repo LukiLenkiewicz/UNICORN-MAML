@@ -17,7 +17,7 @@ class BinaryHyperMAML(nn.Module):
         self.encoder.fc = nn.Linear(self.hdim, args.way)
         self.hn = self.init_hypernetwork()
         from model.networks.convnet import ConvNet as SupportConvNet
-        self.support_encoder = SupportConvNet()
+        self.support_encoder = SupportConvNet(avg_pool=(args.dataset != "cross_char"))
 
     def init_encoder(self, args):
         if args.backbone_class == 'Res12':
@@ -27,7 +27,7 @@ class BinaryHyperMAML(nn.Module):
         elif args.backbone_class == "Conv4":
             self.hdim = 64
             from model.networks.convnet_maml import ConvNet
-            self.encoder = ConvNet()
+            self.encoder = ConvNet(avg_pool=(args.dataset != "cross_char"))
         else:
             raise ValueError('')
         return self.encoder

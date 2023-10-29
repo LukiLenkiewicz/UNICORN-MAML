@@ -189,7 +189,7 @@ def get_command_line_parser():
     parser.add_argument('--backbone_class', type=str, default='Res12',
                         choices=['Res12', "Conv4"])
     parser.add_argument('--dataset', type=str, default='MiniImageNet', 
-                        choices=['MiniImageNet', 'TieredImageNet', 'CUB'])
+                        choices=['MiniImageNet', 'TieredImageNet', 'CUB', 'cross_char'])
     parser.add_argument('--model_class', type=str, default='MAML', 
                         choices=['MAML', 'MAMLUnicorn', "HyperMAML", "BHyperMAML"])
  

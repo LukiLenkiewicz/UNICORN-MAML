@@ -83,7 +83,7 @@ class HyperMAML(nn.Module):
         elif args.backbone_class == "Conv4":
             hdim = 64
             from model.networks.convnet_maml import ConvNet
-            self.encoder = ConvNet()
+            self.encoder = ConvNet(avg_pool=(args.dataset!="cross_char"))
         else:
             raise ValueError('')
 

@@ -4,10 +4,11 @@ from collections import OrderedDict
 
 class ConvNet(nn.Module):
 
-    def __init__(self, x_dim=3, hid_dim=64, z_dim=64):
+    def __init__(self, x_dim=3, hid_dim=64, z_dim=64, avg_pool=True):
         super().__init__()
         self.num_layers = 4
         self.is_training = True
+        self.avg_pool = avg_pool
         # input layer
         self.add_module('{0}_{1}'.format(0,0), nn.Conv2d(x_dim, hid_dim, 3, padding=1))   
         self.add_module('{0}_{1}'.format(0,1), nn.BatchNorm2d(hid_dim))
@@ -32,7 +33,8 @@ class ConvNet(nn.Module):
             output = F.relu(output)
             output = F.max_pool2d(output, 2)
 
-        output = F.avg_pool2d(output, 5)     # AveragePool Here
+        if self.avg_pool:
+            output = F.avg_pool2d(output, 5)     # AveragePool Here
         output = output.view(x.size(0), -1)
         
         logits = F.linear(output, weight=params['fc.weight'], bias=params['fc.bias'])
