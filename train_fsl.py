@@ -22,9 +22,9 @@ if __name__ == '__main__':
     set_gpu(args.gpu)
     trainer = FSLTrainer(args)
     trainer.train()
-    # trainer.evaluate_test()
-    # trainer.final_record()
-    trainer.evaluate_test_cross_shot()
+    trainer.evaluate_test()
+    trainer.final_record()
+    # trainer.evaluate_test_cross_shot()
     print(args.save_path)
 
 

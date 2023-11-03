@@ -230,6 +230,9 @@ def get_command_line_parser():
     # BinaryHyperMAML utils
     parser.add_argument("--bm_chunk_emb_size", type=int, default=8)
     parser.add_argument("--bm_chunk_size", type=int, default=325)
+    parser.add_argument("--bm_mask_size", type=float, default=0.3)
+    parser.add_argument("--bm_method", type=str, default="two_encoders", choices=["two_encoders", "one_encoder"])
+    parser.add_argument("--bm_maml_first", action="store_true")
     # parser.add_argument("--hm_hn_width", type=int, default=256)
 
     return parser
